@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<actions>
+        <action>
+            <actionName>CUSTOM-Jetty run</actionName>
+            <displayName>Jetty run</displayName>
+            <goals>
+                <goal>jetty:run</goal>
+            </goals>
+            <properties>
+                <jpda.listen>maven</jpda.listen>
+                <Env.MAVEN_OPTS>-Xdebug -Xnoagent -Djava.compiler=NONE -Xrunjdwp:transport=dt_socket,server=y,suspend=y,address=${jpda.address}</Env.MAVEN_OPTS>
+                <netbeans.deploy.debugmode>true</netbeans.deploy.debugmode>
+            </properties>
+        </action>
+    </actions>
