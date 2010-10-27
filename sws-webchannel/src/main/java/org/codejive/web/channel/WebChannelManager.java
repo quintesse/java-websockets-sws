@@ -40,6 +40,10 @@ public class WebChannelManager implements SwsEventListener {
     private Map<String, WebChannel> channels;
     private long nextChannelId;
 
+    private static final String ATTR_SRC = "$src";
+    private static final String ATTR_DST = "$dst";
+    private static final String ATTR_CMD = "$cmd";
+    
     private static final String CMD_OPEN = "open";
     private static final String CMD_OPEN_OK = "open-ok";
     private static final String CMD_OPEN_FAIL = "open-fail";
@@ -60,106 +64,130 @@ public class WebChannelManager implements SwsEventListener {
     }
 
     @Override
-    public void onMessage(StableWebSocket socket, String msg) {
+    public void onMessage(StableWebSocket socket, String msgTxt) {
         try {
             JSONParser parser = new JSONParser();
-            JSONObject info = (JSONObject) parser.parse(msg);
+            JSONObject msg = (JSONObject) parser.parse(msgTxt);
 
-            Object from = info.get("$src");
-            Object to = info.get("$dst");
+            String from = attribute(msg, ATTR_SRC);
+            String to = attribute(msg, ATTR_DST);
             if (to != null) {
                 // Check if we received a command message
-                Object command = info.get("$cmd");
+                String command = attribute(msg, ATTR_CMD);
                 if (command != null) {
-                    if (CMD_OPEN.equals(command)) {
-                        Object serviceName = info.get("service");
-                        if (serviceName != null) {
-                            // Is this request for us?
-                            if ("sys".equals(to)) {
-                                log.info("Incoming channel request for service '{}'", serviceName);
-                                Service service = serviceManager.find(serviceName.toString());
-                                if (service != null) {
-                                    WebChannel channel = createChannel(socket, from.toString());
-                                    if (service.accept(channel, info)) {
-                                        log.info("Channel connection accepted");
-                                        try {
-                                            JSONObject reply = new JSONObject();
-                                            reply.put("$cmd", CMD_OPEN_OK);
-                                            channel.send(reply);
-                                            channel.onOpen(from.toString());
-                                        } catch (IOException ex) {
-                                            log.warn("Error sending open-ok message, failed to establish channel", ex);
-                                        }
-                                    } else {
-                                        log.info("Channel connection refused");
-                                        sendReply(socket, CMD_OPEN_FAIL, from, "Connection refused");
-                                    }
-                                } else {
-                                    log.warn("Unknown service '{}'", serviceName);
-                                    sendReply(socket, CMD_OPEN_FAIL, from, "Unknown service");
-                                }
-                            } else {
-                                // Send the request on to its proper destiny
-                                log.info("Forward channel request to '{}'", to);
-                                StableWebSocket destSocket = swsManager.findSocket(to.toString());
-                                if (destSocket != null) {
-                                    WebChannel channel1 = createChannel(socket, from.toString());
-                                    WebChannel channel2 = createChannel(destSocket, "sys");
-                                    createBridge(channel1, channel2);
-                                    try {
-                                        channel2.send(info);
-                                    } catch (IOException ex) {
-                                        log.warn("Error sending open message to peer, failed to establish channel", ex);
-                                        sendReply(socket, CMD_OPEN_FAIL, from, "Error communicating with peer");
-                                    }
-                                } else {
-                                    log.warn("Unknown peer '{}'", to);
-                                    sendReply(socket, CMD_OPEN_FAIL, from, "Unknown peer");
-                                }
-                            }
-                        } else {
-                            log.error("Missing 'service' attribute for 'open'");
-                            sendReply(socket, CMD_OPEN_FAIL, from, "Malformed request");
-                        }
-                    } else {
-                        WebChannel channel = channels.get(to.toString());
-                        if (channel != null) {
-                            if (CMD_OPEN_OK.equals(command)) {
-                                log.info("Received 'open-ok' message for {}", channel);
-                                channel.onMessage(info);
-                                channel.onOpen(from.toString());
-                            } else if (CMD_OPEN_FAIL.equals(command)) {
-                                log.info("Received 'open-fail' message for {}", channel);
-                                channel.onMessage(info);
-                                channel.onClose();
-                            } else if (CMD_CLOSE.equals(command)) {
-                                log.info("Received 'close' message for {}", channel);
-                                channel.onClose();
-                            } else {
-                                log.warn("Unknown channel command received {}", command);
-                            }
-                        } else {
-                            log.warn("Received command for unknown channel {}", to);
-                            if (CMD_OPEN_OK.equals(command)) {
-                                sendReply(socket, CMD_CLOSE, from, "Unknown channel");
-                            }
-                        }
-                    }
+                    handleCommand(socket, msg, from, to, command);
                 } else {
                     // All other messages will be passed to their respective channels
-                    WebChannel channel = channels.get(to.toString());
-                    if (channel != null) {
-                        channel.onMessage(info);
-                    } else {
-                        log.warn("Received message for unknown channel");
-                        sendReply(socket, CMD_CLOSE, from, "Unknown channel");
-                    }
+                    distributeMessage(socket, msg, from, to);
                 }
             } else {
                 log.error("Malformed message received");
             }
         } catch (ParseException ex) {
             log.error("Couldn't parse incoming message", ex);
+        }
+    }
+
+    private void distributeMessage(StableWebSocket socket, JSONObject msg, String from, String to) {
+        WebChannel channel = channels.get(to);
+        if (channel != null) {
+            channel.onMessage(msg);
+        } else {
+            log.warn("Received message for unknown channel");
+            sendReply(socket, CMD_CLOSE, from, "Unknown channel");
+        }
+    }
+
+    private void handleCommand(StableWebSocket socket, JSONObject msg, String from, String to, String command) {
+        if (CMD_OPEN.equals(command)) {
+            handleOpen(socket, msg, from, to);
+        } else {
+            WebChannel channel = channels.get(to);
+            if (channel != null) {
+                handleChannelCommand(msg, from, channel, command);
+            } else {
+                log.warn("Received command for unknown channel {}", to);
+                if (CMD_OPEN_OK.equals(command)) {
+                    sendReply(socket, CMD_CLOSE, from, "Unknown channel");
+                }
+            }
+        }
+    }
+
+    private void handleChannelCommand(JSONObject msg, String from, WebChannel channel, String command) {
+        if (CMD_OPEN_OK.equals(command)) {
+            log.info("Received 'open-ok' message for {}", channel);
+            channel.onMessage(msg);
+            channel.onOpen(from);
+        } else if (CMD_OPEN_FAIL.equals(command)) {
+            log.info("Received 'open-fail' message for {}", channel);
+            channel.onMessage(msg);
+            channel.onClose();
+        } else if (CMD_CLOSE.equals(command)) {
+            log.info("Received 'close' message for {}", channel);
+            channel.onClose();
+        } else {
+            log.warn("Unknown channel command received {}", command);
+        }
+    }
+
+    private void handleOpen(StableWebSocket socket, JSONObject msg, String from, String to) {
+        String serviceName = attribute(msg, "service");
+        if (serviceName != null) {
+            // Is this request for us?
+            if ("sys".equals(to)) {
+                handleLocalOpen(socket, msg, from, serviceName);
+            } else {
+                handleRemoteOpen(socket, msg, from, to);
+            }
+        } else {
+            log.error("Missing 'service' attribute for 'open'");
+            sendReply(socket, CMD_OPEN_FAIL, from, "Malformed request");
+        }
+    }
+
+    private void handleLocalOpen(StableWebSocket socket, JSONObject msg, String from, String serviceName) {
+        log.info("Incoming channel request for service '{}'", serviceName);
+        Service service = serviceManager.find(serviceName);
+        if (service != null) {
+            WebChannel channel = createChannel(socket, from);
+            if (service.accept(channel, msg)) {
+                log.info("Channel connection accepted");
+                try {
+                    JSONObject reply = new JSONObject();
+                    reply.put(ATTR_CMD, CMD_OPEN_OK);
+                    channel.send(reply);
+                    channel.onOpen(from);
+                } catch (IOException ex) {
+                    log.warn("Error sending open-ok message, failed to establish channel", ex);
+                }
+            } else {
+                log.info("Channel connection refused");
+                sendReply(socket, CMD_OPEN_FAIL, from, "Connection refused");
+            }
+        } else {
+            log.warn("Unknown service '{}'", serviceName);
+            sendReply(socket, CMD_OPEN_FAIL, from, "Unknown service");
+        }
+    }
+
+    private void handleRemoteOpen(StableWebSocket socket, JSONObject msg, String from, String to) {
+        // Send the request on to its proper destiny
+        log.info("Forward channel request to '{}'", to);
+        StableWebSocket destSocket = swsManager.findSocket(to);
+        if (destSocket != null) {
+            WebChannel channel1 = createChannel(socket, from);
+            WebChannel channel2 = createChannel(destSocket, "sys");
+            createBridge(channel1, channel2);
+            try {
+                channel2.send(msg);
+            } catch (IOException ex) {
+                log.warn("Error sending open message to peer, failed to establish channel", ex);
+                sendReply(socket, CMD_OPEN_FAIL, from, "Error communicating with peer");
+            }
+        } else {
+            log.warn("Unknown peer '{}'", to);
+            sendReply(socket, CMD_OPEN_FAIL, from, "Unknown peer");
         }
     }
 
@@ -201,13 +229,18 @@ public class WebChannelManager implements SwsEventListener {
     private void sendReply(StableWebSocket socket, String command, Object dstId, String reason) {
         try {
             JSONObject reply = new JSONObject();
-            reply.put("$cmd", command);
-            reply.put("$dst", dstId);
+            reply.put(ATTR_CMD, command);
+            reply.put(ATTR_DST, dstId);
             reply.put("reason", reason);
             socket.sendMessage(reply.toJSONString());
         } catch (IOException ex) {
             log.warn("Error sending reply", ex);
         }
+    }
+
+    private String attribute(JSONObject msg, String name) {
+        Object value = msg.get(name);
+        return (value != null) ? value.toString() : null;
     }
 
     private void createBridge(WebChannel channel1, WebChannel channel2) {

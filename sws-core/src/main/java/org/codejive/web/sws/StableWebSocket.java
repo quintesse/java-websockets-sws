@@ -29,6 +29,7 @@ import org.slf4j.LoggerFactory;
  * @author Tako Schotanus <tako@codejive.org>
  */
 public class StableWebSocket implements WebSocket, WebSocketEventListener {
+
     public enum SwsState { created, connecting, connected, reconnecting, closing, closed };
 
     private String id;
@@ -115,6 +116,90 @@ public class StableWebSocket implements WebSocket, WebSocketEventListener {
 
     @Override
     public void onMessage(String msg) {
+        if (SWS_COOKIE.equals(msg)) {
+            // Handle connect request
+            handleConnect();
+        } else if (msg.startsWith(SWS_RECONNECT)) {
+            // Handle reconnect request
+            handleReconnect(msg);
+        } else if (sws_ping.equals(msg)) {
+            // PING message, nothing to do
+            log.debug("Received PING message from client");
+        } else if (sws_close.equals(msg)) {
+            // Client wants to close the connection
+            handleClose();
+        } else {
+            if (state == SwsState.connected) {
+                if (listener != null) {
+                    // ALL other messages go to the listener
+                    listener.onMessage(this, msg);
+                }
+            } else {
+                log.error("Received unexpected message. Ignoring. State {}", state);
+                close();
+            }
+        }
+    }
+
+    private void handleConnect() {
+        if (state == SwsState.connecting) {
+            try {
+                socket.sendMessage(sws_session);
+                state = SwsState.connected;
+                log.info("Received protocol cookie. State CONNECTED. Id {}", id);
+                if (listener != null) {
+                    listener.onOpen(this);
+                }
+            } catch (Throwable th) {
+                log.error("Could not establish connection with client", th);
+                close();
+            }
+        } else {
+            log.error("Received unexpected connect request. Ignoring. State {}", state);
+            close();
+        }
+    }
+
+    private void handleReconnect(String msg) {
+        if (state == SwsState.connecting) {
+            String sesId = msg.substring(SWS_RECONNECT.length());
+            log.info("Received reconnect request from client for SWS {}", sesId);
+            if (!reattachSocket(sesId)) {
+                log.error("Trying to re-establish connection with unknown SWS");
+                close();
+            } else {
+                log.debug("Shutting down temporary handler");
+                _close();
+            }
+        } else if (state == SwsState.reconnecting && sws_reconnect.equals(msg)) {
+            try {
+                if (disconnectTimer != null) {
+                    disconnectTimer.cancel();
+                }
+                socket.sendMessage(sws_session);
+                state = SwsState.connected;
+                log.info("Re-established connection with client. State CONNECTED. Id {}", id);
+                if (listener != null) {
+                    listener.onReconnect(this);
+                }
+            } catch (Throwable th) {
+                log.error("Could not re-establish connection with client", th);
+                close();
+            }
+        } else {
+            log.error("Received unexpected reconnect request. Ignoring. State {}", state);
+            close();
+        }
+    }
+
+    private void handleClose() {
+        log.info("Received close message from client");
+        _close();
+    }
+
+/*
+    @Override
+    public void onMessage(String msg) {
         switch (state) {
             case connecting:
                 // Waiting for first message from client
@@ -190,6 +275,7 @@ public class StableWebSocket implements WebSocket, WebSocketEventListener {
                 log.info("Received unexpected message. Ignoring. State {}", state);
         }
     }
+*/
 
     @Override
     public void onClose() {
@@ -227,7 +313,9 @@ public class StableWebSocket implements WebSocket, WebSocketEventListener {
         }
         manager.removeSocket(id);
         manager = null;
-        socket.setEventListener(null);
+        if (socket != null) {
+            socket.setEventListener(null);
+        }
     }
 
     private boolean reattachSocket(String swsId) {
