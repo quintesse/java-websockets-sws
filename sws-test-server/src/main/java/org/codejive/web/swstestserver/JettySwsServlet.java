@@ -48,6 +48,7 @@ import org.slf4j.LoggerFactory;
 public class JettySwsServlet extends WebSocketServlet {
     private SwsManager swsManager;
     private ServiceManager serviceManager;
+    private WebChannelManager webChannelManager;
     
     private static final Logger log = LoggerFactory.getLogger(JettySwsServlet.class);
 
@@ -66,6 +67,8 @@ public class JettySwsServlet extends WebSocketServlet {
         sm.register("clients", new ClientsService(swsManager));
 
         serviceManager = sm;
+        
+        webChannelManager = new WebChannelManager(swsManager, serviceManager);
     }
 
     @Override
@@ -92,7 +95,6 @@ public class JettySwsServlet extends WebSocketServlet {
         public void onConnect(Outbound outbound) {
             log.info(this + " onConnect - creating JettyWebSocketAdapter");
             adapter = new JettyWebSocketAdapter(outbound);
-            WebChannelManager webChannelManager = new WebChannelManager(swsManager, serviceManager);
             StableWebSocket sws = new StableWebSocket(swsManager, webChannelManager);
             sws.setSocket(adapter);
             swsManager.addSocket(sws);

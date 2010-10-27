@@ -33,6 +33,7 @@ public class WebChannel {
     private StableWebSocket socket;
     private String peerId;
     private String id;
+    private String uniqueId;
 
     private Set<WebChannelListener> listeners;
     private boolean closed;
@@ -49,10 +50,15 @@ public class WebChannel {
         return peerId;
     }
 
+    public String getUniqueId() {
+        return uniqueId;
+    }
+
     public WebChannel(StableWebSocket socket, String peerId, String id) {
         this.socket = socket;
         this.peerId = peerId;
         this.id = id;
+        uniqueId = makeUniqueId(socket, id);
         listeners = new HashSet<WebChannelListener>();
         closed = false;
     }
@@ -172,5 +178,9 @@ public class WebChannel {
     @Override
     public String toString() {
         return "WebChannel(" + id + ", " + peerId + ") on " + socket;
+    }
+
+    public static String makeUniqueId(StableWebSocket socket, String id) {
+        return id + "@" + socket.getId();
     }
 }

@@ -287,11 +287,17 @@ function WebChannelManager(socket) {
                         if (_self.logging && console) console.log("Received 'open-ok' message for channel", to);
                         channel._onOpen(from);
                     } else if (command == "open-fail") {
-                        if (_self.logging && console) console.log("Received 'open-fail' message for channel", to);
+                        if (_self.logging && console) console.log("Received 'open-fail' message for channel", to, "because", pkt["reason"]);
                         channel._onClose();
                     } else if (command == "close") {
                         if (_self.logging && console) console.log("Received 'close' message for channel", to);
                         channel._onClose();
+                    } else if (command == "peer-disconnect") {
+                        if (_self.logging && console) console.log("Received 'peer-disconnect' message for channel", to);
+                        channel._onDisconnect();
+                    } else if (command == "peer-reconnect") {
+                        if (_self.logging && console) console.log("Received 'peer-reconnect' message for channel", to);
+                        channel._onReconnect();
                     } else {
                         if (_self.logging && console) console.log("Unknown channel command", command, "received for", to);
                     }
@@ -392,4 +398,31 @@ var ServicesService = {
     }
 };
 
+var EchoService = {
+    accept : function(channel, pkt) {
+        channel.onmessage.bind(EchoService.onMessage);
+        return true;
+    },
+
+    onMessage : function(channel, pkt) {
+        channel.send(pkt);
+    }
+};
+
+var TimeService = {
+    accept : function(channel, pkt) {
+        channel.onclose.bind(TimeService.onClose);
+        channel._time_service_interval = setInterval(function() {
+            channel.send({ time : new Date() });
+        }, 1000);
+        return true;
+    },
+
+    onClose : function(channel) {
+        clearInterval(channel._time_service_interval);
+    }
+};
+
 ServiceManager.register("services", ServicesService.accept);
+ServiceManager.register("echo", EchoService.accept);
+ServiceManager.register("time", TimeService.accept);

@@ -20,6 +20,7 @@ package org.codejive.web.channel;
 import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.codejive.web.sws.StableWebSocket;
 import org.codejive.web.sws.SwsEventListener;
 import org.codejive.web.sws.SwsManager;
@@ -48,6 +49,8 @@ public class WebChannelManager implements SwsEventListener {
     private static final String CMD_OPEN_OK = "open-ok";
     private static final String CMD_OPEN_FAIL = "open-fail";
     private static final String CMD_CLOSE = "close";
+    private static final String CMD_DISCONNECT = "peer-disconnect";
+    private static final String CMD_RECONNECT = "peer-reconnect";
 
     private static final Logger log = LoggerFactory.getLogger(WebChannelManager.class);
 
@@ -89,7 +92,7 @@ public class WebChannelManager implements SwsEventListener {
     }
 
     private void distributeMessage(StableWebSocket socket, JSONObject msg, String from, String to) {
-        WebChannel channel = channels.get(to);
+        WebChannel channel = channel(socket, to);
         if (channel != null) {
             channel.onMessage(msg);
         } else {
@@ -102,7 +105,7 @@ public class WebChannelManager implements SwsEventListener {
         if (CMD_OPEN.equals(command)) {
             handleOpen(socket, msg, from, to);
         } else {
-            WebChannel channel = channels.get(to);
+            WebChannel channel = channel(socket, to);
             if (channel != null) {
                 handleChannelCommand(msg, from, channel, command);
             } else {
@@ -117,12 +120,19 @@ public class WebChannelManager implements SwsEventListener {
     private void handleChannelCommand(JSONObject msg, String from, WebChannel channel, String command) {
         if (CMD_OPEN_OK.equals(command)) {
             log.info("Received 'open-ok' message for {}", channel);
-            channel.onMessage(msg);
+            if (!channel.getPeerId().equals("sys")) {
+                // This is a bridged connection, so we forward the message to our peer
+                channel.onMessage(msg);
+            }
             channel.onOpen(from);
         } else if (CMD_OPEN_FAIL.equals(command)) {
-            log.info("Received 'open-fail' message for {}", channel);
-            channel.onMessage(msg);
-            channel.onClose();
+            String reason = attribute(msg, "reason");
+            log.info("Received 'open-fail' message for {} because '{}'", channel, reason);
+            if (!channel.getPeerId().equals("sys")) {
+                // This is a bridged connection, so we forward the message to our peer
+                channel.onMessage(msg);
+            }
+            channel.close();
         } else if (CMD_CLOSE.equals(command)) {
             log.info("Received 'close' message for {}", channel);
             channel.onClose();
@@ -177,7 +187,7 @@ public class WebChannelManager implements SwsEventListener {
         StableWebSocket destSocket = swsManager.findSocket(to);
         if (destSocket != null) {
             WebChannel channel1 = createChannel(socket, from);
-            WebChannel channel2 = createChannel(destSocket, "sys");
+            WebChannel channel2 = createChannel(destSocket, "***");
             createBridge(channel1, channel2);
             try {
                 channel2.send(msg);
@@ -194,15 +204,19 @@ public class WebChannelManager implements SwsEventListener {
     private WebChannel createChannel(StableWebSocket socket, String peerId) {
         String id = Long.toString(nextChannelId++);
         WebChannel channel = new WebChannel(socket, peerId, id);
-        channels.put(id, channel);
+        channels.put(channel.getUniqueId(), channel);
         // Just to make sure we clean up after ourselves
         channel.addWebChannelEventListener(new WebChannelAdapter() {
             @Override
             public void onClose(WebChannel channel) {
-                channels.remove(channel.getId());
+                channels.remove(channel.getUniqueId());
             }
         });
         return channel;
+    }
+
+    private WebChannel channel(StableWebSocket socket, String channelId) {
+        return channels.get(WebChannel.makeUniqueId(socket, channelId));
     }
 
     @Override
@@ -253,37 +267,65 @@ public class WebChannelManager implements SwsEventListener {
         private WebChannel channel1;
         private WebChannel channel2;
 
-        private ThreadLocal<Boolean> skip;
+        private AtomicBoolean skip;
 
         public WebChannelBridge(WebChannel channel1, WebChannel channel2) {
             this.channel1 = channel1;
             this.channel2 = channel2;
             
-            skip = new ThreadLocal<Boolean>();
+            skip = new AtomicBoolean(false);
         }
 
         @Override
         public void onMessage(WebChannel channel, JSONObject msg) {
-            if (skip.get() == null) {
-                skip.set(Boolean.TRUE);
+            if (skip.compareAndSet(false, true)) {
                 try {
                     otherChannel(channel).send(msg);
                 } catch (IOException ex) {
                     log.warn("Channel bridge could not pass message", ex);
                 } finally {
-                    skip.set(null);
+                    skip.set(false);
+                }
+            }
+        }
+
+        @Override
+        public void onDisconnect(WebChannel channel) {
+            if (skip.compareAndSet(false, true)) {
+                try {
+                    JSONObject msg = new JSONObject();
+                    msg.put(ATTR_CMD, CMD_DISCONNECT);
+                    otherChannel(channel).send(msg);
+                } catch (IOException ex) {
+                    log.warn("Channel bridge could send 'peer-disconnect' message", ex);
+                } finally {
+                    skip.set(false);
+                }
+            }
+        }
+
+        @Override
+        public void onReconnect(WebChannel channel) {
+            if (skip.compareAndSet(false, true)) {
+                try {
+                    JSONObject msg = new JSONObject();
+                    msg.put(ATTR_CMD, CMD_RECONNECT);
+                    otherChannel(channel).send(msg);
+                } catch (IOException ex) {
+                    log.warn("Channel bridge could send 'peer-reconnect' message", ex);
+                } finally {
+                    skip.set(false);
                 }
             }
         }
 
         @Override
         public void onClose(WebChannel channel) {
-            if (skip.get() == null) {
-                skip.set(Boolean.TRUE);
+            if (skip.compareAndSet(false, true)) {
                 try {
                     otherChannel(channel).close();
                 } finally {
-                    skip.set(null);
+                    skip.set(false);
                 }
             }
         }

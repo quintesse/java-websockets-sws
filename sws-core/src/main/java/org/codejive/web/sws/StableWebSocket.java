@@ -169,6 +169,7 @@ public class StableWebSocket implements WebSocket, WebSocketEventListener {
                 close();
             } else {
                 log.debug("Shutting down temporary handler");
+                listener = null;
                 _close();
             }
         } else if (state == SwsState.reconnecting && sws_reconnect.equals(msg)) {
@@ -196,86 +197,6 @@ public class StableWebSocket implements WebSocket, WebSocketEventListener {
         log.info("Received close message from client");
         _close();
     }
-
-/*
-    @Override
-    public void onMessage(String msg) {
-        switch (state) {
-            case connecting:
-                // Waiting for first message from client
-                if (SWS_COOKIE.equals(msg)) {
-                    try {
-                        socket.sendMessage(sws_session);
-                        state = SwsState.connected;
-                        log.info("Received protocol cookie. State CONNECTED. Id {}", id);
-                        if (listener != null) {
-                            listener.onOpen(this);
-                        }
-                    } catch (Throwable th) {
-                        log.error("Could not establish connection with client", th);
-                        close();
-                    }
-                } else if (msg.startsWith(SWS_RECONNECT)) {
-                    String sesId = msg.substring(SWS_RECONNECT.length());
-                    log.info("Received reconnect request from client for SWS {}", sesId);
-                    if (!reattachSocket(sesId)) {
-                        log.error("Trying to re-establish connection with unknown SWS");
-                        close();
-                    } else {
-                        log.debug("Shutting down temporary handler");
-                        _close();
-                    }
-                } else {
-                    log.error("Received unexpected message");
-                    close();
-                }
-                break;
-            case reconnecting:
-                // Waiting for reconnect message from client
-                if (sws_reconnect.equals(msg)) {
-                    try {
-                        if (disconnectTimer != null) {
-                            disconnectTimer.cancel();
-                        }
-                        socket.sendMessage(sws_session);
-                        state = SwsState.connected;
-                        log.info("Re-established connection with client. State CONNECTED. Id {}", id);
-                        if (listener != null) {
-                            listener.onReconnect(this);
-                        }
-                    } catch (Throwable th) {
-                        log.error("Could not re-establish connection with client", th);
-                        close();
-                    }
-                } else {
-                    log.error("Received unexpected message");
-                    close();
-                }
-                break;
-            case connected:
-                if (sws_ping.equals(msg)) {
-                    // PING message, nothing to do
-                    log.debug("Received PING message from client");
-                } else if (SWS_COOKIE.equals(msg)) {
-                    log.info("Received unexpected init message from client, ignoring");
-                } else if (sws_reconnect.equals(msg)) {
-                    log.info("Received unexpected reconnect message from client, ignoring");
-                } else if (sws_close.equals(msg)) {
-                    // Client wants to close the connection
-                    log.info("Received close message from client");
-                    _close();
-                } else {
-                    if (listener != null) {
-                        // ALL other messages go to the listener
-                        listener.onMessage(this, msg);
-                    }
-                }
-                break;
-            default:
-                log.info("Received unexpected message. Ignoring. State {}", state);
-        }
-    }
-*/
 
     @Override
     public void onClose() {

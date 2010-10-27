@@ -48,6 +48,7 @@ import org.slf4j.LoggerFactory;
 public class GlassfishSwsServlet extends HttpServlet {
     private SwsManager swsManager;
     private ServiceManager serviceManager;
+    private WebChannelManager webChannelManager;
 
     private static final Logger log = LoggerFactory.getLogger(GFSwsWebSocketApp.class);
 
@@ -68,6 +69,8 @@ public class GlassfishSwsServlet extends HttpServlet {
         sm.register("clients", new ClientsService(swsManager));
 
         serviceManager = sm;
+
+        webChannelManager = new WebChannelManager(swsManager, serviceManager);
     }
 
     class GFSwsWebSocketApp extends WebSocketApplication {
@@ -84,7 +87,6 @@ public class GlassfishSwsServlet extends HttpServlet {
 //            newListeners[listeners.length] = adapter;
 //            WebSocket socket = new GFSwsWebSocket(newListeners);
 //            adapter.setSocket(socket);
-//            WebChannelManager webChannelManager = new WebChannelManager(swsManager, serviceManager);
 //            StableWebSocket sws = new StableWebSocket(swsManager, webChannelManager);
 //            sws.setSocket(adapter);
 //            swsManager.addSocket(sws);
