@@ -264,7 +264,7 @@ function WebChannelManager(socket) {
                         var id = _nextChannelId++;
                         var channel = new WebChannel(_socket, serviceName, from, id);
                         _channels[id] = channel;
-                        if (service(channel, pkt)) {
+                        if (service.handler(channel, pkt)) {
                             if (_self.logging && console) console.log("Channel connection accepted");
                             channel.send({$cmd : "open-ok"});
                             channel._onOpen(from);
@@ -330,7 +330,7 @@ function WebChannelManager(socket) {
 
     function _for(func) {
         var channels = _channels.clone();
-        for (var i in channels) {
+        for (var i = 0, len = channels.length; i < len; i++) {
             var channel = channels[i];
             func(channel);
         }
@@ -361,42 +361,90 @@ WebChannelManager.associate = function(socket) {
 // ServiceManager
 // ****************************************************************
 
-var ServiceManager = {
-    _services : {},
+var ServiceManager = new function ServiceManagerSingleton() {
+    var _self = this;
 
-    register : function(name, func) {
-        this._services[name] = func;
-    },
+    // ****************************************************************
+    // "PUBLIC" METHODS
+    // ****************************************************************
 
-    find : function(name) {
-        return this._services[name];
-    },
-
-    listNames : function() {
-        var names = [];
-        for (var i in this._services) {
-            names.push(i);
+    _self.register = function(name, description, func) {
+        var service = {
+            info : {
+                name : name,
+                description : description
+            },
+            handler : func
         }
-        return names;
+        _services[name] = service;
+        _self.onchange.fire(name, true);
+    };
+
+    _self.unregister = function(name) {
+        delete _services[name];
+        _self.onchange.fire(name, false);
+    };
+
+    _self.find = function(name) {
+        return _services[name];
+    };
+
+    _self.list = function() {
+        var ss = [];
+        for (var s in _services) {
+            ss.push(_services[s].info);
+        }
+        return ss;
     }
+
+    var _services = {};
+
+    _self.onchange = new EventHandler();
 };
 
-var ServicesService = {
-    accept : function(channel, pkt) {
+
+// ****************************************************************
+// ServicesService
+//   Predefined service that keeps the peer informed of the services
+//   that are defined on this side of the connection
+// ****************************************************************
+
+var ServicesService = new function ServicesServiceSingleton() {
+    var _self = this;
+
+    // ****************************************************************
+    // "PUBLIC" METHODS
+    // ****************************************************************
+
+    _self.accept = function(channel, pkt) {
         channel.onopen.bind(ServicesService.onOpen);
         return true;
-    },
+    };
 
-    onOpen : function(channel) {
+    _self.onOpen = function(channel) {
+        _sendServices(channel);
+        ServiceManager.onchange.bind(function() {
+            _sendServices(channel);
+        });
+    };
+
+    // ****************************************************************
+    // PRIVATE METHODS
+    // ****************************************************************
+
+    function _sendServices(channel) {
         var pkt = {
-            services : ServiceManager.listNames()
+            services : ServiceManager.list()
         };
         channel.send(pkt);
-        //channel.close();
-        // Why??
-        setTimeout(function() { channel.close(); }, 0);
     }
 };
+
+
+// ****************************************************************
+// EchoService
+//   Predefined service that simply returns the messages it receives
+// ****************************************************************
 
 var EchoService = {
     accept : function(channel, pkt) {
@@ -408,6 +456,12 @@ var EchoService = {
         channel.send(pkt);
     }
 };
+
+
+// ****************************************************************
+// TimeService
+//   Predefined service that sends the current time each second
+// ****************************************************************
 
 var TimeService = {
     accept : function(channel, pkt) {
@@ -423,6 +477,6 @@ var TimeService = {
     }
 };
 
-ServiceManager.register("services", ServicesService.accept);
-ServiceManager.register("echo", EchoService.accept);
-ServiceManager.register("time", TimeService.accept);
+ServiceManager.register("services", "Informs about available services", ServicesService.accept);
+ServiceManager.register("echo", "Echoes all sent messages", EchoService.accept);
+ServiceManager.register("time", "Sends time updates", TimeService.accept);

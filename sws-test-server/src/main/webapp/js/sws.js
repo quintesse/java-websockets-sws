@@ -350,7 +350,7 @@ Object.prototype.clone = function(){
 
 Array.prototype.clone = function(){
     var newObj = [];
-    for (var i = 0; i < this.length; i++) {
+    for (var i = 0, len = this.length; i < len; i++) {
         if (this[i] && typeof this[i] == "object")
             newObj[i] = this[i].clone();
         else
@@ -379,7 +379,7 @@ function EventHandler() {
 
     _self.fire = function() {
         var handlers = _handlers.clone();
-        for (var i in handlers) {
+        for (var i = 0, len = handlers.length; i < len; i++) {
             try {
                 handlers[i].apply(null, arguments);
             } catch (ex) {

@@ -153,6 +153,14 @@
                 var txt = $('#echotxt').val();
                 wch[0].send({ echo : txt });
             }
+
+            function register() {
+                ServiceManager.register("foobar", function() { /* do nothing */ });
+            }
+
+            function unregister() {
+                ServiceManager.unregister("foobar");
+            }
         </script>
     </head>
     <body id="main">
@@ -202,5 +210,9 @@
         <input id="wchclosebutton3" type="button" onclick="wch[3].close()" value="Close">
         <span id="wchextra3"></span>
         <br><span id="wchoutput3">...</span>
+
+        <p><br>
+        <input id="wchregister" type="button" onclick="register()" value="Register">
+        <input id="wchunregister" type="button" onclick="unregister()" value="Unregister">
     </body>
 </html>
