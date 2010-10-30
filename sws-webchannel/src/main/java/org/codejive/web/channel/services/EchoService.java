@@ -34,6 +34,11 @@ public class EchoService extends WebChannelAdapter implements Service {
     private static final Logger log = LoggerFactory.getLogger(EchoService.class);
 
     @Override
+    public String getDescription() {
+        return "Echoes all sent messages";
+    }
+
+    @Override
     public void init() {
         // Nothing to do
     }

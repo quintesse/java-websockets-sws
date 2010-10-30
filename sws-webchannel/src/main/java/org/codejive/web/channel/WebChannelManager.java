@@ -61,6 +61,10 @@ public class WebChannelManager implements SwsEventListener {
         nextChannelId = 1;
     }
 
+    public WebChannel createChannel(StableWebSocket socket) {
+        return createChannel(socket, null);
+    }
+
     @Override
     public void onOpen(StableWebSocket socket) {
         // Nothing to do here
@@ -120,7 +124,7 @@ public class WebChannelManager implements SwsEventListener {
     private void handleChannelCommand(JSONObject msg, String from, WebChannel channel, String command) {
         if (CMD_OPEN_OK.equals(command)) {
             log.info("Received 'open-ok' message for {}", channel);
-            if (!channel.getPeerId().equals("sys")) {
+            if (channel.getPeerId() != null && !channel.getPeerId().equals("sys")) {
                 // This is a bridged connection, so we forward the message to our peer
                 channel.onMessage(msg);
             }
@@ -128,7 +132,7 @@ public class WebChannelManager implements SwsEventListener {
         } else if (CMD_OPEN_FAIL.equals(command)) {
             String reason = attribute(msg, "reason");
             log.info("Received 'open-fail' message for {} because '{}'", channel, reason);
-            if (!channel.getPeerId().equals("sys")) {
+            if (channel.getPeerId() != null && !channel.getPeerId().equals("sys")) {
                 // This is a bridged connection, so we forward the message to our peer
                 channel.onMessage(msg);
             }

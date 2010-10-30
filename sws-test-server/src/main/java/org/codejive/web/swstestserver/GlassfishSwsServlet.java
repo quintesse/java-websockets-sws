@@ -62,15 +62,15 @@ public class GlassfishSwsServlet extends HttpServlet {
 
         SimpleServiceManager sm = new SimpleServiceManager();
 
+        serviceManager = sm;
+
+        webChannelManager = new WebChannelManager(swsManager, serviceManager);
+
         // A couple of hard-coded services
         sm.register("echo", new EchoService());
         sm.register("time", new TimeService());
         sm.register("services", new ServicesService(sm));
-        sm.register("clients", new ClientsService(swsManager));
-
-        serviceManager = sm;
-
-        webChannelManager = new WebChannelManager(swsManager, serviceManager);
+        sm.register("clients", new ClientsService(swsManager, webChannelManager));
     }
 
     class GFSwsWebSocketApp extends WebSocketApplication {
@@ -89,7 +89,6 @@ public class GlassfishSwsServlet extends HttpServlet {
 //            adapter.setSocket(socket);
 //            StableWebSocket sws = new StableWebSocket(swsManager, webChannelManager);
 //            sws.setSocket(adapter);
-//            swsManager.addSocket(sws);
             return socket;
         }
     }

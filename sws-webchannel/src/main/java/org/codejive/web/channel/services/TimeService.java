@@ -37,6 +37,11 @@ public class TimeService implements Service {
     private static final Logger log = LoggerFactory.getLogger(EchoService.class);
 
     @Override
+    public String getDescription() {
+        return "Sends time updates";
+    }
+
+    @Override
     public void init() {
         // Nothing to do
     }

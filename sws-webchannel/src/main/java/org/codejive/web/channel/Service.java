@@ -24,6 +24,7 @@ import org.json.simple.JSONObject;
  * @author Tako Schotanus <tako@codejive.org>
  */
 public interface Service {
+    String getDescription();
     void init();
     boolean accept(WebChannel channel, JSONObject msg);
     void shutdown();

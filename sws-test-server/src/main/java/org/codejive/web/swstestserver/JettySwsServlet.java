@@ -60,15 +60,15 @@ public class JettySwsServlet extends WebSocketServlet {
         
         SimpleServiceManager sm = new SimpleServiceManager();
 
+        serviceManager = sm;
+        
+        webChannelManager = new WebChannelManager(swsManager, serviceManager);
+
         // A couple of hard-coded services
         sm.register("echo", new EchoService());
         sm.register("time", new TimeService());
         sm.register("services", new ServicesService(sm));
-        sm.register("clients", new ClientsService(swsManager));
-
-        serviceManager = sm;
-        
-        webChannelManager = new WebChannelManager(swsManager, serviceManager);
+        sm.register("clients", new ClientsService(swsManager, webChannelManager));
     }
 
     @Override
@@ -97,7 +97,6 @@ public class JettySwsServlet extends WebSocketServlet {
             adapter = new JettyWebSocketAdapter(outbound);
             StableWebSocket sws = new StableWebSocket(swsManager, webChannelManager);
             sws.setSocket(adapter);
-            swsManager.addSocket(sws);
             adapter.onOpen();
         }
 

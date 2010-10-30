@@ -46,6 +46,11 @@ public class ServicesService extends WebChannelAdapter implements Service {
     }
 
     @Override
+    public String getDescription() {
+        return "Informs about available services";
+    }
+
+    @Override
     public void shutdown() {
         // Nothing to do
     }
@@ -59,11 +64,7 @@ public class ServicesService extends WebChannelAdapter implements Service {
 
     @Override
     public void onOpen(WebChannel channel) {
-        // Make an object containing a list of all the service names
-        JSONArray list = new JSONArray();
-        list.addAll(serviceManager.listNames());
-        JSONObject result = new JSONObject();
-        result.put("services", list);
+        JSONObject result = makeServicesList();
 
         try {
             channel.send(result);
@@ -73,5 +74,20 @@ public class ServicesService extends WebChannelAdapter implements Service {
 
         // Indicates that the list is static, we're never going to send updates
         channel.close();
+    }
+
+    // Make an object containing a list of all the service names
+    protected JSONObject makeServicesList() {
+        JSONArray list = new JSONArray();
+        for (String name : serviceManager.listNames()) {
+            Service service = serviceManager.find(name);
+            JSONObject info = new JSONObject();
+            info.put("name", name);
+            info.put("description", service.getDescription());
+            list.add(info);
+        }
+        JSONObject result = new JSONObject();
+        result.put("services", list);
+        return result;
     }
 }

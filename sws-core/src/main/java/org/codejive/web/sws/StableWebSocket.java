@@ -147,6 +147,7 @@ public class StableWebSocket implements WebSocket, WebSocketEventListener {
                 socket.sendMessage(sws_session);
                 state = SwsState.connected;
                 log.info("Received protocol cookie. State CONNECTED. Id {}", id);
+                manager.addSocket(this);
                 if (listener != null) {
                     listener.onOpen(this);
                 }

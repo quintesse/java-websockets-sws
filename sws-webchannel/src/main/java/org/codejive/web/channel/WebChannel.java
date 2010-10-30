@@ -38,6 +38,9 @@ public class WebChannel {
     private Set<WebChannelListener> listeners;
     private boolean closed;
 
+    private static final String ATTR_CMD = "$cmd";
+
+    private static final String CMD_OPEN = "open";
     private static final String CMD_CLOSE = "close";
 
     private static final Logger log = LoggerFactory.getLogger(WebChannel.class);
@@ -66,6 +69,16 @@ public class WebChannel {
     boolean belongsTo(StableWebSocket socket) {
         return this.socket.getId().equals(socket.getId());
     }
+
+    public void open(String service) throws IOException {
+        if (peerId != null) {
+            throw new IllegalStateException("Channel already open");
+        }
+        JSONObject msg = new JSONObject();
+        msg.put(ATTR_CMD, CMD_OPEN);
+        msg.put("service", service);
+        send(msg);
+    }
     
     protected void onOpen(String peerId) {
         log.info("Opened channel {}-{}", id, peerId);
@@ -87,16 +100,18 @@ public class WebChannel {
 
     private void sendClose() throws IOException {
         JSONObject msg = new JSONObject();
-        msg.put("$cmd", CMD_CLOSE);
+        msg.put(ATTR_CMD, CMD_CLOSE);
         send(msg);
     }
     
     public void close() {
         log.info("Closing channel {}-{}", id, peerId);
-        try {
-            sendClose();
-        } catch (IOException ex) {
-            log.warn("Couldn't send 'close' message to peer", ex);
+        if (peerId != null) {
+            try {
+                sendClose();
+            } catch (IOException ex) {
+                log.warn("Couldn't send 'close' message to peer", ex);
+            }
         }
         onClose();
     }
