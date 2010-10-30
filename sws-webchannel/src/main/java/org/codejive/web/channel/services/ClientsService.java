@@ -62,6 +62,9 @@ public class ClientsService extends WebChannelAdapter implements Service, SwsMan
     @Override
     public void init() {
         swsManager.addChangeListener(this);
+        for (StableWebSocket socket : swsManager.getSockets().values()) {
+            addClientInfoUpdater(socket);
+        }
     }
 
     @Override
@@ -108,10 +111,6 @@ public class ClientsService extends WebChannelAdapter implements Service, SwsMan
     private void sendClientList(WebChannel channel) {
         // Make an object containing a list of all the client IDs
         JSONArray list = new JSONArray();
-        // First the server itself
-//        clientInfo.put("sys", ServicesService.)
-//        list.add(createClientInfo("sys"));
-        // Then all the clients
         for (String id : swsManager.getSockets().keySet()) {
             list.add(createClientInfo(id));
         }
