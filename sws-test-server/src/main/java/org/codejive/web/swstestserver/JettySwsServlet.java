@@ -32,6 +32,8 @@ import org.codejive.web.channel.SimpleServiceManager;
 import org.codejive.web.channel.WebChannelManager;
 import org.codejive.web.channel.services.EchoService;
 import org.codejive.web.channel.services.TimeService;
+import org.codejive.web.sws.LocalStableWebSocket;
+import org.codejive.web.sws.NetworkStableWebSocket;
 import org.codejive.web.sws.StableWebSocket;
 import org.codejive.web.sws.SwsManager;
 import org.codejive.web.sws.WebSocketAdapter;
@@ -49,6 +51,7 @@ public class JettySwsServlet extends WebSocketServlet {
     private SwsManager swsManager;
     private ServiceManager serviceManager;
     private WebChannelManager webChannelManager;
+    private StableWebSocket localSocket;
     
     private static final Logger log = LoggerFactory.getLogger(JettySwsServlet.class);
 
@@ -64,6 +67,8 @@ public class JettySwsServlet extends WebSocketServlet {
         
         webChannelManager = new WebChannelManager(swsManager, serviceManager);
 
+        localSocket = new LocalStableWebSocket(swsManager, webChannelManager);
+
         // A couple of hard-coded services
         sm.register("echo", new EchoService());
         sm.register("time", new TimeService());
@@ -74,6 +79,7 @@ public class JettySwsServlet extends WebSocketServlet {
     @Override
     public void destroy() {
         super.destroy();
+        localSocket.close();
         swsManager.shutdown();
     }
 
@@ -95,7 +101,7 @@ public class JettySwsServlet extends WebSocketServlet {
         public void onConnect(Outbound outbound) {
             log.info(this + " onConnect - creating JettyWebSocketAdapter");
             adapter = new JettyWebSocketAdapter(outbound);
-            StableWebSocket sws = new StableWebSocket(swsManager, webChannelManager);
+            NetworkStableWebSocket sws = new NetworkStableWebSocket(swsManager, webChannelManager);
             sws.setSocket(adapter);
             adapter.onOpen();
         }

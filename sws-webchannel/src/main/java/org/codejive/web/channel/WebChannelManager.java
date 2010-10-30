@@ -62,7 +62,7 @@ public class WebChannelManager implements SwsEventListener {
     }
 
     public WebChannel createChannel(StableWebSocket socket) {
-        return createChannel(socket, null);
+        return createChannel(socket, "sys");
     }
 
     @Override

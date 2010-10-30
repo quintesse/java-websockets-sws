@@ -36,6 +36,7 @@ public class WebChannel {
     private String uniqueId;
 
     private Set<WebChannelListener> listeners;
+    private boolean open;
     private boolean closed;
 
     private static final String ATTR_CMD = "$cmd";
@@ -63,6 +64,7 @@ public class WebChannel {
         this.id = id;
         uniqueId = makeUniqueId(socket, id);
         listeners = new HashSet<WebChannelListener>();
+        open = false;
         closed = false;
     }
 
@@ -71,7 +73,7 @@ public class WebChannel {
     }
 
     public void open(String service) throws IOException {
-        if (peerId != null) {
+        if (open) {
             throw new IllegalStateException("Channel already open");
         }
         JSONObject msg = new JSONObject();
@@ -83,6 +85,7 @@ public class WebChannel {
     protected void onOpen(String peerId) {
         log.info("Opened channel {}-{}", id, peerId);
         this.peerId = peerId;
+        open = true;
         closed = false;
         fireOnOpen();
     }
@@ -106,7 +109,7 @@ public class WebChannel {
     
     public void close() {
         log.info("Closing channel {}-{}", id, peerId);
-        if (peerId != null) {
+        if (open) {
             try {
                 sendClose();
             } catch (IOException ex) {
@@ -118,6 +121,7 @@ public class WebChannel {
 
     protected void onClose() {
         if (!closed) {
+            open = false;
             closed = true;
             fireOnClose();
             listeners = null;

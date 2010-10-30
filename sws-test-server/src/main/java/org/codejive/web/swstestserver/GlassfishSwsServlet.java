@@ -34,6 +34,7 @@ import org.codejive.web.channel.services.ClientsService;
 import org.codejive.web.channel.services.EchoService;
 import org.codejive.web.channel.services.ServicesService;
 import org.codejive.web.channel.services.TimeService;
+import org.codejive.web.sws.LocalStableWebSocket;
 import org.codejive.web.sws.StableWebSocket;
 import org.codejive.web.sws.SwsManager;
 import org.codejive.web.sws.adapters.GFSwsWebSocket;
@@ -49,6 +50,7 @@ public class GlassfishSwsServlet extends HttpServlet {
     private SwsManager swsManager;
     private ServiceManager serviceManager;
     private WebChannelManager webChannelManager;
+    private StableWebSocket localSocket;
 
     private static final Logger log = LoggerFactory.getLogger(GFSwsWebSocketApp.class);
 
@@ -65,6 +67,8 @@ public class GlassfishSwsServlet extends HttpServlet {
         serviceManager = sm;
 
         webChannelManager = new WebChannelManager(swsManager, serviceManager);
+
+        localSocket = new LocalStableWebSocket(swsManager, webChannelManager);
 
         // A couple of hard-coded services
         sm.register("echo", new EchoService());
@@ -87,7 +91,7 @@ public class GlassfishSwsServlet extends HttpServlet {
 //            newListeners[listeners.length] = adapter;
 //            WebSocket socket = new GFSwsWebSocket(newListeners);
 //            adapter.setSocket(socket);
-//            StableWebSocket sws = new StableWebSocket(swsManager, webChannelManager);
+//            DefaultStableWebSocketImpl sws = new DefaultStableWebSocketImpl(swsManager, webChannelManager);
 //            sws.setSocket(adapter);
             return socket;
         }
