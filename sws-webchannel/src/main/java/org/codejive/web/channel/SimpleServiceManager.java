@@ -34,6 +34,12 @@ public class SimpleServiceManager implements ServiceManager {
 
     public void register(String name, Service service) {
         services.put(name, service);
+        service.init();
+    }
+
+    public void unregister(String name, Service service) {
+        service.shutdown();
+        services.remove(name);
     }
 
     @Override

@@ -41,6 +41,16 @@ public class ServicesService extends WebChannelAdapter implements Service {
     }
 
     @Override
+    public void init() {
+        // Nothing to do
+    }
+
+    @Override
+    public void shutdown() {
+        // Nothing to do
+    }
+
+    @Override
     public boolean accept(WebChannel channel, JSONObject msg) {
         log.info("Accepting connection");
         channel.addWebChannelEventListener(this);

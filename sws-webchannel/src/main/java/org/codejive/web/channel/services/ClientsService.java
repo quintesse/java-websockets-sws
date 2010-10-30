@@ -18,10 +18,14 @@
 package org.codejive.web.channel.services;
 
 import java.io.IOException;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import org.codejive.web.channel.Service;
 import org.codejive.web.channel.WebChannel;
 import org.codejive.web.channel.WebChannelAdapter;
+import org.codejive.web.sws.StableWebSocket;
 import org.codejive.web.sws.SwsManager;
+import org.codejive.web.sws.SwsManagerChangeEventListener;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.slf4j.Logger;
@@ -31,39 +35,73 @@ import org.slf4j.LoggerFactory;
  *
  * @author Tako Schotanus <tako@codejive.org>
  */
-public class ClientsService extends WebChannelAdapter implements Service {
+public class ClientsService extends WebChannelAdapter implements Service, SwsManagerChangeEventListener {
     private SwsManager swsManager;
+    private Map<String, WebChannel> acceptedServices;
 
     private static final Logger log = LoggerFactory.getLogger(ClientsService.class);
 
     public ClientsService(SwsManager swsManager) {
         this.swsManager = swsManager;
+        acceptedServices = new ConcurrentHashMap<String, WebChannel>();
+    }
+
+    @Override
+    public void init() {
+        swsManager.addChangeListener(this);
     }
 
     @Override
     public boolean accept(WebChannel channel, JSONObject msg) {
         log.info("Accepting connection");
         channel.addWebChannelEventListener(this);
+        acceptedServices.put(channel.getUniqueId(), channel);
         return true;
     }
 
     @Override
+    public void shutdown() {
+        swsManager.removeChangeListener(this);
+    }
+
+    @Override
     public void onOpen(WebChannel channel) {
+        sendClientList(channel);
+    }
+
+    @Override
+    public void onClose(WebChannel channel) {
+        acceptedServices.remove(channel.getUniqueId());
+    }
+
+    @Override
+    public void onSocketAdd(SwsManager manager, StableWebSocket socket) {
+        sendClientListToAll();
+    }
+
+    @Override
+    public void onSocketRemove(SwsManager manager, StableWebSocket socket) {
+        sendClientListToAll();
+    }
+
+    private void sendClientListToAll() {
+        for (WebChannel channel : acceptedServices.values()) {
+            sendClientList(channel);
+        }
+    }
+    
+    private void sendClientList(WebChannel channel) {
         // Make an object containing a list of all the client IDs
         JSONArray list = new JSONArray();
         list.add("sys");
         list.addAll(swsManager.getSockets().keySet());
         JSONObject result = new JSONObject();
         result.put("clients", list);
-
         try {
             channel.send(result);
         } catch (IOException ex) {
             // Ignore
         }
-
-        // Indicates that the list is static, we're never going to send updates
-        channel.close();
     }
 
 }

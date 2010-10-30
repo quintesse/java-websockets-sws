@@ -29,12 +29,14 @@ import org.slf4j.LoggerFactory;
  */
 public class SwsManager {
     private Map<String, StableWebSocket> sockets;
+    private EventDispatcher<SwsManagerChangeEventListener> changeListeners;
 
     private static final Logger log = LoggerFactory.getLogger(SwsManager.class);
 
     public SwsManager() {
         log.info("Initializing the SwsManager");
         sockets = new ConcurrentHashMap<String, StableWebSocket>();
+        changeListeners = new EventDispatcher<SwsManagerChangeEventListener>() {};
     }
 
     public Map<String, StableWebSocket> getSockets() {
@@ -44,14 +46,27 @@ public class SwsManager {
     public StableWebSocket findSocket(String swsId) {
         return sockets.get(swsId);
     }
-    
-    public void removeSocket(String swsId) {
-        sockets.remove(swsId);
-    }
 
     public WebSocketEventListener addSocket(StableWebSocket sws) {
-        sockets.put(sws.getId(), sws);
+        if (sockets.put(sws.getId(), sws) == null) {
+            changeListeners.fire().onSocketAdd(this, sws);
+        }
         return sws;
+    }
+    
+    public void removeSocket(String swsId) {
+        StableWebSocket sws = sockets.remove(swsId);
+        if (sws != null) {
+            changeListeners.fire().onSocketRemove(this, sws);
+        }
+    }
+
+    public void addChangeListener(SwsManagerChangeEventListener listener) {
+        changeListeners.addListener(listener);
+    }
+
+    public void removeChangeListener(SwsManagerChangeEventListener listener) {
+        changeListeners.removeListener(listener);
     }
 
     public void shutdown() {

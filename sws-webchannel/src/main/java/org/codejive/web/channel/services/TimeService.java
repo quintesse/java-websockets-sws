@@ -37,6 +37,16 @@ public class TimeService implements Service {
     private static final Logger log = LoggerFactory.getLogger(EchoService.class);
 
     @Override
+    public void init() {
+        // Nothing to do
+    }
+
+    @Override
+    public void shutdown() {
+        // Nothing to do
+    }
+
+    @Override
     public boolean accept(WebChannel channel, JSONObject msg) {
         log.info("Accepting connection");
         channel.addWebChannelEventListener(new TimeServiceHandler());

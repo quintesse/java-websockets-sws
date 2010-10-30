@@ -15,16 +15,13 @@
  *  under the License.
  */
 
-package org.codejive.web.channel;
-
-import org.json.simple.JSONObject;
+package org.codejive.web.sws;
 
 /**
  *
  * @author Tako Schotanus <tako@codejive.org>
  */
-public interface Service {
-    void init();
-    boolean accept(WebChannel channel, JSONObject msg);
-    void shutdown();
+public interface SwsManagerChangeEventListener {
+    void onSocketAdd(SwsManager manager, StableWebSocket socket);
+    void onSocketRemove(SwsManager manager, StableWebSocket socket);
 }
