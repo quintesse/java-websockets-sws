@@ -176,11 +176,11 @@ function WebChannel(socket, service, arg1, arg2) {
     var _peerSocketId = "sys";
 
     _self.logging = false;
-    _self.onopen = new EventHandler();
-    _self.onclose = new EventHandler();
-    _self.ondisconnect = new EventHandler();
-    _self.onreconnect = new EventHandler();
-    _self.onmessage = new EventHandler();
+    _self.onopen = new EventDispatcher();
+    _self.onclose = new EventDispatcher();
+    _self.ondisconnect = new EventDispatcher();
+    _self.onreconnect = new EventDispatcher();
+    _self.onmessage = new EventDispatcher();
 
     if (arg2) {
         // Connection already established
@@ -330,7 +330,7 @@ function WebChannelManager(socket) {
 
     function _for(func) {
         var channels = _channels.clone();
-        for (var i = 0, len = channels.length; i < len; i++) {
+        for (var i in channels) {
             var channel = channels[i];
             func(channel);
         }
@@ -399,7 +399,7 @@ var ServiceManager = new function ServiceManagerSingleton() {
 
     var _services = {};
 
-    _self.onchange = new EventHandler();
+    _self.onchange = new EventDispatcher();
 };
 
 

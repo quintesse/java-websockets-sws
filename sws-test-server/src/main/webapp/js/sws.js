@@ -324,11 +324,11 @@ function StableWebSocket(url) {
     _self.reconnectDelay = 3000;
     _self.maxReconnect = 10;
 
-    _self.onopen = new EventHandler();
-    _self.onclose = new EventHandler();
-    _self.ondisconnect = new EventHandler();
-    _self.onreconnect = new EventHandler();
-    _self.onmessage = new EventHandler();
+    _self.onopen = new EventDispatcher();
+    _self.onclose = new EventDispatcher();
+    _self.ondisconnect = new EventDispatcher();
+    _self.onreconnect = new EventDispatcher();
+    _self.onmessage = new EventDispatcher();
 
     _open();
 }
@@ -359,7 +359,7 @@ Array.prototype.clone = function(){
     return newObj;
 };
 
-function EventHandler() {
+function EventDispatcher() {
     var _self = this;
 
     // ****************************************************************
