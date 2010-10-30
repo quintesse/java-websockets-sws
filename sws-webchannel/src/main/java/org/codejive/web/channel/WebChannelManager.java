@@ -222,21 +222,27 @@ public class WebChannelManager implements SwsEventListener {
     @Override
     public void onDisconnect(StableWebSocket socket) {
         for (WebChannel channel : channels.values()) {
-            channel.onDisconnect();
+            if (channel.belongsTo(socket)) {
+                channel.onDisconnect();
+            }
         }
     }
 
     @Override
     public void onReconnect(StableWebSocket socket) {
         for (WebChannel channel : channels.values()) {
-            channel.onReconnect();
+            if (channel.belongsTo(socket)) {
+                channel.onReconnect();
+            }
         }
     }
 
     @Override
     public void onClose(StableWebSocket socket) {
         for (WebChannel channel : channels.values()) {
-            channel.onClose();
+            if (channel.belongsTo(socket)) {
+                channel.onClose();
+            }
         }
     }
 

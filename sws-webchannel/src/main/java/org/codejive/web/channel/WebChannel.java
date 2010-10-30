@@ -62,6 +62,10 @@ public class WebChannel {
         listeners = new HashSet<WebChannelListener>();
         closed = false;
     }
+
+    boolean belongsTo(StableWebSocket socket) {
+        return this.socket.getId().equals(socket.getId());
+    }
     
     protected void onOpen(String peerId) {
         log.info("Opened channel {}-{}", id, peerId);
