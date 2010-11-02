@@ -337,27 +337,29 @@ function StableWebSocket(url) {
 // Utility classes and methods
 //
 
-Object.prototype.clone = function(){
-    var newObj = {};
-    for (var i in this) {
-        if (this[i] && typeof this[i] == "object")
-            newObj[i] = this[i].clone();
-        else
-            newObj[i] = this[i];
+function clone(obj){
+    var newObj;
+    if (obj instanceof Array) {
+        newObj = [];
+        for (var i = 0, len = obj.length; i < len; i++) {
+            if (obj[i] && typeof obj[i] == "object")
+                newObj[i] = clone(obj[i]);
+            else
+                newObj[i] = obj[i];
+        }
+    } else if (obj instanceof Object) {
+        newObj = {};
+        for (var j in obj) {
+            if (obj[j] && typeof obj[j] == "object")
+                newObj[j] = clone(obj[j]);
+            else
+                newObj[j] = obj[j];
+        }
+    } else {
+        newObj = obj;
     }
     return newObj;
-};
-
-Array.prototype.clone = function(){
-    var newObj = [];
-    for (var i = 0, len = this.length; i < len; i++) {
-        if (this[i] && typeof this[i] == "object")
-            newObj[i] = this[i].clone();
-        else
-            newObj[i] = this[i];
-    }
-    return newObj;
-};
+}
 
 function EventDispatcher() {
     var _self = this;
@@ -378,7 +380,7 @@ function EventDispatcher() {
     }
 
     _self.fire = function() {
-        var handlers = _handlers.clone();
+        var handlers = clone(_handlers);
         for (var i = 0, len = handlers.length; i < len; i++) {
             try {
                 handlers[i].apply(null, arguments);

@@ -329,7 +329,7 @@ function WebChannelManager(socket) {
     }
 
     function _for(func) {
-        var channels = _channels.clone();
+        var channels = clone(_channels);
         for (var i in channels) {
             var channel = channels[i];
             func(channel);
