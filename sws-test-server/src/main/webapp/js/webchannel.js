@@ -188,7 +188,14 @@ function WebChannel(socket, service, arg1, arg2) {
         _id = arg2;
     } else {
         // Next step: establish connection
-        _peerSocketId = arg1;
+        if (arg1) {
+            _peerSocketId = arg1;
+        } else if (_service.substr(0, 2) == '//') {
+            // service name really is a //peer/service url
+            var tmp = service.split("/", 4);
+            _peerSocketId = tmp[2];
+            _service = tmp[3];
+        }
         setTimeout(_init, 0);
     }
 }
