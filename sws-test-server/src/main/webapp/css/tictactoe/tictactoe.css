@@ -1,0 +1,77 @@
+body {
+    font: normal normal normal 12px/normal 'helvetica neue', helvetica, arial, verdana, tahoma, 'sans serif';
+    min-width: 40em;
+    max-width: 73em;
+}
+
+p {
+    margin: 0px;
+    padding: 0px;
+    font-size: 14px;
+    margin-bottom: 1.5em;
+}
+
+.spinner {
+    background-image: url(../../images/spinner.gif);
+    background-position: center;
+    background-repeat: no-repeat
+}
+
+.supported {
+    display: none;
+}
+
+.unsupported {
+    display: none;
+}
+
+.hidden {
+    display: none;
+}
+
+.disabled {
+}
+
+.error {
+    background-color: #ff8888;
+}
+
+.warningbox {
+    border: 3px solid red;
+    padding: 1em;
+    border-radius: 8px;
+}
+
+.formbox {
+    border: 3px solid gray;
+    padding: 1em;
+    border-radius: 8px;
+}
+
+#board {
+    background-image: url(../../images/tictactoe/tictactoe.png);
+    width: 334px;
+    height: 321px;
+}
+
+#status {
+}
+
+.cell {
+    position: relative;
+    left: 0px; top: 0px;
+}
+
+.cross {
+    background-image: url(../../images/tictactoe/cross.png);
+}
+
+.nought {
+    background-image: url(../../images/tictactoe/nought.png);
+}
+
+.stroke {
+    position: absolute;
+    left: 0px; top: 0px;
+    visibility: hidden;
+}
