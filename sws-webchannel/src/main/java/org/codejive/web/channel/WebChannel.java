@@ -83,8 +83,10 @@ public class WebChannel {
     }
     
     protected void onOpen(String peerId) {
-        log.info("Opened channel {}-{}", id, peerId);
-        this.peerId = peerId;
+        if (peerId != null) {
+            this.peerId = peerId;
+        }
+        log.info("Opened channel {}-{}", id, this.peerId);
         open = true;
         closed = false;
         fireOnOpen();
@@ -123,10 +125,10 @@ public class WebChannel {
         if (!closed) {
             open = false;
             closed = true;
+            log.info("Closed channel {}-{}", id, peerId);
             fireOnClose();
             listeners = null;
             socket = null;
-            log.info("Closed channel {}-{}", id, peerId);
         }
     }
 

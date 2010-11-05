@@ -282,8 +282,19 @@ public class WebChannelManager implements SwsEventListener {
         public WebChannelBridge(WebChannel channel1, WebChannel channel2) {
             this.channel1 = channel1;
             this.channel2 = channel2;
-            
             skip = new AtomicBoolean(false);
+            log.info("Created bridge between {} and {}", channel1, channel2);
+        }
+
+        @Override
+        public void onOpen(WebChannel channel) {
+            if (skip.compareAndSet(false, true)) {
+                try {
+                    otherChannel(channel).onOpen(null);
+                } finally {
+                    skip.set(false);
+                }
+            }
         }
 
         @Override
