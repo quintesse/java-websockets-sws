@@ -52,6 +52,12 @@ function WebChannel(socket, service, arg1, arg2) {
         _send(pkt);
     }
 
+    // Retrieves the ServiceManager associated with this channel
+    // (or more corectly this channel's socket)'
+    _self.services = function() {
+        return ServiceManager.forSocket(_socket);
+    }
+
     // Closes the channel
     _self.close = function() {
         if (_id) {
@@ -113,7 +119,7 @@ function WebChannel(socket, service, arg1, arg2) {
 
     // Initializes the channel and socket
     function _init() {
-        _manager = WebChannelManager.associate(_socket);
+        _manager = WebChannelManager.forSocket(_socket);
         _id = _manager.addChannel(_self);
         _closed = false;
         
@@ -266,10 +272,11 @@ function WebChannelManager(socket) {
             if (command == "open") {
                 var serviceName = pkt["service"];
                 if (serviceName) {
-                    var service = ServiceManager.find(serviceName) ;
+                    var service = ServiceManager.forSocket(socket).find(serviceName) ;
                     if (service) {
                         var id = _nextChannelId++;
                         var channel = new WebChannel(_socket, serviceName, from, id);
+                        channel.logging = true;
                         _channels[id] = channel;
                         if (service.handler(channel, pkt)) {
                             if (_self.logging && console) console.log("Channel connection accepted");
@@ -356,9 +363,10 @@ function WebChannelManager(socket) {
     _socket.onmessage.bind(_onMessage);
 }
 
-WebChannelManager.associate = function(socket) {
+WebChannelManager.forSocket = function(socket) {
     if (!socket._channelManager) {
         socket._channelManager = new WebChannelManager(socket);
+        socket.onclose.bind(function() { delete socket._channelManager; })
     }
     return socket._channelManager;
 }
@@ -368,7 +376,7 @@ WebChannelManager.associate = function(socket) {
 // ServiceManager
 // ****************************************************************
 
-var ServiceManager = new function ServiceManagerSingleton() {
+function ServiceManager() {
     var _self = this;
 
     // ****************************************************************
@@ -393,11 +401,18 @@ var ServiceManager = new function ServiceManagerSingleton() {
     };
 
     _self.find = function(name) {
-        return _services[name];
+        if (_self != GlobalServiceManager) {
+            return _services[name] || GlobalServiceManager.find(name);
+        } else {
+            return _services[name];
+        }
     };
 
-    _self.list = function() {
-        var ss = [];
+    _self.list = function(lst) {
+        var ss = lst || [];
+        if (_self != GlobalServiceManager) {
+            GlobalServiceManager.list(ss);
+        }
         for (var s in _services) {
             ss.push(_services[s].info);
         }
@@ -407,7 +422,23 @@ var ServiceManager = new function ServiceManagerSingleton() {
     var _services = {};
 
     _self.onchange = new EventDispatcher();
-};
+
+    if (GlobalServiceManager && _self != GlobalServiceManager) {
+        GlobalServiceManager.onchange.bind(function(name, added) {
+            _self.onchange.fire(name, added);
+        });
+    }
+}
+
+ServiceManager.forSocket = function(socket) {
+    if (!socket._serviceManager) {
+        socket._serviceManager = new ServiceManager();
+        socket.onclose.bind(function() { delete socket._serviceManager; })
+    }
+    return socket._serviceManager;
+}
+
+var GlobalServiceManager = new ServiceManager();
 
 
 // ****************************************************************
@@ -430,7 +461,7 @@ var ServicesService = new function ServicesServiceSingleton() {
 
     _self.onOpen = function(channel) {
         _sendServices(channel);
-        ServiceManager.onchange.bind(function() {
+        channel.services().onchange.bind(function() {
             _sendServices(channel);
         });
     };
@@ -441,7 +472,7 @@ var ServicesService = new function ServicesServiceSingleton() {
 
     function _sendServices(channel) {
         var pkt = {
-            services : ServiceManager.list()
+            services : channel.services().list()
         };
         channel.send(pkt);
     }
@@ -484,6 +515,6 @@ var TimeService = {
     }
 };
 
-ServiceManager.register("services", "Informs about available services", ServicesService.accept);
-ServiceManager.register("echo", "Echoes all sent messages", EchoService.accept);
-ServiceManager.register("time", "Sends time updates", TimeService.accept);
+GlobalServiceManager.register("echo", "Echoes all sent messages", EchoService.accept);
+GlobalServiceManager.register("time", "Sends time updates", TimeService.accept);
+GlobalServiceManager.register("services", "Informs about available services", ServicesService.accept);
