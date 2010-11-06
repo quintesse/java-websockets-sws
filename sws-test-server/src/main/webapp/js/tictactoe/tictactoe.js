@@ -20,6 +20,8 @@ $(document).ready(function() {
         $('.supported').fadeIn();
         $('.unsupported').fadeOut();
         initBoard();
+        demo = true;
+        demoTimer = setTimeout(startDemo, 5000);
     } else {
         $('.supported').fadeOut();
         $('.unsupported').fadeIn();
@@ -30,6 +32,8 @@ $(document).ready(function() {
 var cellWidth = 80;
 var cellHeight = 82;
 
+// Initializes the board moving all the elements to their
+// correct positions
 function initBoard() {
     var p = $('#board').offset();
     var boardLeft = p.left + 50;
@@ -43,23 +47,49 @@ function initBoard() {
         });
     });
 
+    // Prevent the images from being dragged
+    // (not really necessary but clicking sometimes tunrs into
+    // a drag which looks a bit messy)
+    $('.cell').mousedown(function(event) {event.preventDefault();})
+    $('.stoke').mousedown(function(event) {event.preventDefault();})
+    $('#board').mousedown(function(event) {event.preventDefault();})
+
+    // Showing each of the strokes once because it positions them
+    // correctly on the board.
+    showWinHorizontal(0);
+    showWinVertical(0);
+    showWinDiagonal(true);
+
     clearBoard();
-    makeMove('cross');
 }
 
+// Resets the board to its initial state
 function clearBoard() {
-    $('.cell').attr('class', 'cell selectable');
+    $('.cell').addClass('selectable');
+    $('.cell').removeClass('nought cross');
+    $('#strokeh,#strokev,#stroked').css('visibility', 'hidden');
 }
 
-function makeMove(classname) {
+function enableMove(classname) {
     $('.selectable').bind('mouseenter', function() {
         $(this).addClass(classname);
     }).bind('mouseleave', function() {
         $(this).removeClass(classname);
     }).bind('click', function() {
-        $('.selectable').unbind('mouseenter mouseleave');
+        disableMove();
         $(this).removeClass('selectable');
+        var x = $(this).attr('xpos');
+        var y = $(this).attr('ypos');
+        makeMove(x, y);
     });
+}
+
+function disableMove() {
+    $('.cell').unbind('mouseenter mouseleave click');
+}
+
+function cell(x, y) {
+    return $('.selectable[xpos=' + x + '][ypos=' + y + ']');
 }
 
 function showWinHorizontal(row) {
@@ -72,7 +102,7 @@ function showWinHorizontal(row) {
         top: py,
         left: strokeLeft
     });
-    stroke.show('fast');
+    stroke.css('visibility', 'visible');
 }
 
 function showWinVertical(column) {
@@ -85,7 +115,7 @@ function showWinVertical(column) {
         top: strokeTop,
         left: px
     });
-    stroke.show('fast');
+    stroke.css('visibility', 'visible');
 }
 
 function showWinDiagonal(isTopDown) {
@@ -102,7 +132,7 @@ function showWinDiagonal(isTopDown) {
     } else {
         stroke.attr('src', 'images/tictactoe/strokebt.png');
     }
-    stroke.show('fast');
+    stroke.css('visibility', 'visible');
 }
 
 var sws, clientChannel;
@@ -166,7 +196,7 @@ function onClientChannelMessage(channel, msg) {
                     var srv = client.services[j];
                     if (srv.name.indexOf('tictactoe$') == 0) {
                         var url = '//' + client.id + '/' + srv.name;
-                        select.append($(document.createElement("option")).attr("value", url).text(srv.description));
+                        select.append($(document.createElement("option")).attr("value", url).text(sanitize(srv.description)));
                     }
                 }
             }
@@ -219,18 +249,30 @@ function setGameStatus(msg, error) {
     }
 }
 
+function getPlayerName() {
+    return $('#name').val();
+}
+
+var peerName;
+function getPeerName() {
+    return peerName;
+}
+
+var isMaster;
 function newGame() {
+    isMaster = true;
+    stopDemo();
     $('#startform').hide('fast');
     $('#waitform').fadeIn();
     setWaitStatus('Waiting for other player to connect...');
-    var name = $('#name').val();
+    var name = getPlayerName();
     var id = "tictactoe$" + sws.id();
     var service = new TicTacToeGameService(id, name);
-    ServiceManager.register(id, name + "'s TicTacToe game", service.accept);
+    clientChannel.services().register(id, name + "'s TicTacToe game", service.accept);
 }
 
 function stopWait() {
-    ServiceManager.unregister("tictactoe$" + sws.id());
+    clientChannel.services().unregister("tictactoe$" + sws.id());
     $('#waitform').fadeOut();
     $('#startform').show('fast');
 }
@@ -241,6 +283,8 @@ function selectGame() {
 
 var gameChannel;
 function joinGame() {
+    isMaster = false;
+    stopDemo();
     $('#startform').hide('fast');
     $('#waitform').fadeIn();
     setWaitStatus('Connecting to game...');
@@ -266,14 +310,201 @@ function onGameChannelOpen(channel) {
     $('#waitform').hide('fast');
     $('#gameform').show('fast');
     setGameStatus('Connected. Setting up...');
+    if (isMaster) {
+        startMaster();
+    } else {
+        startSlave();
+    }
 }
 
+var turn;
 function onGameChannelMessage(channel, msg) {
+    var cmd = msg.cmd;
+    if (cmd == 'start' && !isMaster && state == 'connecting') {
+        peerName = sanitize(msg.name);
+        turn = msg.start;
+        updateGameStatus();
+        gameChannel.send({
+            cmd: 'startok',
+            name: getPlayerName()
+        });
+        setupTurn();
+        state = 'playing';
+    } else if (cmd == 'startok' && isMaster && state == 'connecting') {
+        peerName = sanitize(msg.name);
+        updateGameStatus();
+        setupTurn();
+        state = 'playing';
+    } else if (cmd == 'move' && state == 'playing' && !isMyTurn() && cell(msg.x, msg.y).size() == 1) {
+        makeMove(msg.x, msg.y);
+    } else {
+        if (console) console.log('Unknown or wrong message received',  msg);
+        gameChannel.close();
+    }
 }
 
 function onGameChannelClose(channel) {
-    setGameStatus('Game disconnected', true);
+    setGameStatus(getPlayerName() + ' left the game', true);
     gameChannel = undefined;
+}
+
+var state;
+function startMaster() {
+    state = 'connecting';
+    if (Math.floor(Math.random() * 2)) {
+        turn = 'cross';
+    } else {
+        turn = 'nought';
+    }
+    gameChannel.send({
+        cmd: 'start',
+        name: getPlayerName(),
+        start: turn
+    });
+    clearBoard();
+}
+
+function startSlave() {
+    state = 'connecting';
+    clearBoard();
+}
+
+function isMine(ply) {
+    return ((ply == "cross" && isMaster) || (ply == "nought" && !isMaster));
+}
+
+function isMyTurn() {
+    return !demo && isMine(turn);
+}
+
+function setupTurn() {
+    if (isMyTurn()) {
+        enableMove(turn);
+    } else {
+        disableMove();
+    }
+}
+
+function toggleTurn() {
+    if (turn == 'cross') {
+        turn = 'nought';
+    } else {
+        turn = 'cross';
+    }
+    setupTurn();
+}
+
+function makeMove(x, y) {
+    var c = cell(x, y);
+    if (isMyTurn()) {
+        gameChannel.send({
+            cmd: 'move',
+            x: x,
+            y: y
+        });
+    } else {
+        c.addClass(turn);
+    }
+    c.removeClass('selectable');
+    if (hasWon()) {
+        disableMove();
+    } else {
+        toggleTurn();
+    }
+    updateGameStatus();
+}
+
+function hasWon(ply) {
+    if (!ply) {
+        return hasWon('cross') || hasWon('nought');
+    } else {
+        var res;
+        for (var i = 0; i < 3 && !res; i++) {
+            if ($('.' + ply + '[ypos=' + i + ']').size() == 3) {
+                showWinHorizontal(i);
+                res = ply;
+            }
+            if (!res && $('.' + ply + '[xpos=' + i + ']').size() == 3) {
+                showWinVertical(i);
+                res = ply;
+            }
+        }
+        if (!res && $('.' + ply + '.diagtd').size() == 3) {
+            showWinDiagonal(true);
+            res = ply;
+        }
+        if (!res && $('.' + ply + '.diagdt').size() == 3) {
+            showWinDiagonal(false);
+            res = ply;
+        }
+        return res;
+    }
+}
+
+function gameOver() {
+    return (hasWon() != undefined) || ($('.selectable').size() == 0);
+}
+
+var demo = false;
+var demoTimer;
+function startDemo() {
+    demo = true;
+    turn = 'cross';
+    clearBoard();
+    demoTimer = setTimeout(makeDemoMove, 2000);
+}
+
+function makeDemoMove() {
+    if (demo) {
+        // The demo is very stupid, it just makes a random move
+        // First get all available legal moves left
+        var cells = $('.selectable');
+        // Choose one at random
+        var mv = Math.floor(Math.random() * cells.size());
+        // And make the move
+        var c = $(cells[mv]);
+        var x = c.attr('xpos');
+        var y = c.attr('ypos');
+        makeMove(x, y);
+
+        if (gameOver()) {
+            demoTimer = setTimeout(startDemo, 10000);
+        } else {
+            demoTimer = setTimeout(makeDemoMove, 2000);
+        }
+    }
+}
+
+function stopDemo() {
+    if (demo) {
+        demo = false;
+        clearTimeout(demoTimer);
+    }
+}
+
+function updateGameStatus() {
+    if (!demo) {
+        var txt = "You're playing with " + getPeerName();
+        if (gameOver()) {
+            var ply = hasWon();
+            if (isMine(ply)) {
+                txt = txt + " - YOU WON! Do you want to play again?"
+            } else if (ply) {
+                txt = txt + " - You lose. Do you want to play again?"
+            } else {
+                txt = txt + " - It's a draw!. Do you want to play again?"
+            }
+        } else if (isMyTurn()) {
+            txt = txt + " - It's YOUR turn to play";
+        } else {
+            txt = txt + " - It's their turn to play";
+        }
+        setGameStatus(txt);
+    }
+}
+
+function sanitize(txt) {
+    return txt.substr(0, 20).replace(/[&<>]/g, '');
 }
 
 // ****************************************************************
@@ -292,7 +523,7 @@ function TicTacToeGameService(id, name) {
         channel.onopen.bind(_self.onOpen);
         channel.onmessage.bind(_self.onMessage);
         channel.onclose.bind(_self.onClose);
-        ServiceManager.unregister(id);
+        channel.services().unregister(id);
         return true;
     };
 

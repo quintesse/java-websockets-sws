@@ -30,7 +30,7 @@
             </p>
 
             <p id="startform" class="formbox hidden">
-                Name <input id="name" type="text" size="20"><br>
+                Name <input id="name" type="text" size="20" maxlength="20"><br>
                 <select id="games" size="8" class="hidden" onChange="selectGame()">
                 </select><br>
                 <input id="newgamebutton" type="button" value="New Game" onClick="newGame()">
@@ -49,15 +49,15 @@
         </div>
 
         <div id="board">
-            <img id="cell00" class="cell" xpos="0" ypos="0" src="images/blank.gif" width="60px" height="60px">
+            <img id="cell00" class="cell diagtd" xpos="0" ypos="0" src="images/blank.gif" width="60px" height="60px">
             <img id="cell10" class="cell" xpos="1" ypos="0" src="images/blank.gif" width="60px" height="60px">
-            <img id="cell20" class="cell" xpos="2" ypos="0" src="images/blank.gif" width="60px" height="60px">
+            <img id="cell20" class="cell diagdt" xpos="2" ypos="0" src="images/blank.gif" width="60px" height="60px">
             <img id="cell01" class="cell" xpos="0" ypos="1" src="images/blank.gif" width="60px" height="60px">
-            <img id="cell11" class="cell" xpos="1" ypos="1" src="images/blank.gif" width="60px" height="60px">
+            <img id="cell11" class="cell diagtd diagdt" xpos="1" ypos="1" src="images/blank.gif" width="60px" height="60px">
             <img id="cell21" class="cell" xpos="2" ypos="1" src="images/blank.gif" width="60px" height="60px">
-            <img id="cell02" class="cell" xpos="0" ypos="2" src="images/blank.gif" width="60px" height="60px">
+            <img id="cell02" class="cell diagdt" xpos="0" ypos="2" src="images/blank.gif" width="60px" height="60px">
             <img id="cell12" class="cell" xpos="1" ypos="2" src="images/blank.gif" width="60px" height="60px">
-            <img id="cell22" class="cell" xpos="2" ypos="2" src="images/blank.gif" width="60px" height="60px">
+            <img id="cell22" class="cell diagtd" xpos="2" ypos="2" src="images/blank.gif" width="60px" height="60px">
 
             <!-- Strokes for winning combination : horizontal, vertical and diagonal -->
             <img id="strokeh" class="stroke" src="images/tictactoe/strokeh.png" width="226px" height="24px">
