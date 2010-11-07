@@ -30,10 +30,10 @@
             </p>
 
             <p id="startform" class="formbox hidden">
-                Name <input id="name" type="text" size="20" maxlength="20"><br>
+                Name <input id="name" type="text" size="20" maxlength="20" onkeyup="updategui()"><br>
                 <select id="games" size="8" class="hidden" onChange="selectGame()">
                 </select><br>
-                <input id="newgamebutton" type="button" value="New Game" onClick="newGame()">
+                <input id="newgamebutton" type="button" value="New Game" class="disabled" onClick="newGame()">
                 <input id="joingamebutton" type="button" value="Join Game" class="hidden disabled" onClick="joinGame()">
             </p>
 
@@ -44,7 +44,8 @@
 
             <p id="gameform" class="formbox hidden">
                 <input id="leavegamebutton" type="button" value="Leave Game" onClick="leaveGame()">
-                <span id="gamestatus">You are playing with XXX</span>
+                <span id="gamestatus"></span>
+                <input id="playagainbutton" class="hidden" type="button" value="Play Again" onClick="replayGame()">
             </p>
         </div>
 

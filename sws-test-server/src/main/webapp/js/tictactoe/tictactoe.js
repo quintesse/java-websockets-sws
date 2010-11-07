@@ -20,8 +20,7 @@ $(document).ready(function() {
         $('.supported').fadeIn();
         $('.unsupported').fadeOut();
         initBoard();
-        demo = true;
-        demoTimer = setTimeout(startDemo, 5000);
+        startDemo();
     } else {
         $('.supported').fadeOut();
         $('.unsupported').fadeIn();
@@ -240,12 +239,17 @@ function setWaitStatus(msg, error) {
     }
 }
 
-function setGameStatus(msg, error) {
+function setGameStatus(msg, error, again) {
     $('#gamestatus').text(msg);
     if (error) {
         $('#gameform').addClass('error')
     } else {
         $('#gameform').removeClass('error')
+    }
+    if (again) {
+        $('#playagainbutton').fadeIn();
+    } else {
+        $('#playagainbutton').fadeOut();
     }
 }
 
@@ -306,6 +310,24 @@ function leaveGame() {
     }
 }
 
+function replayGame() {
+    gameChannel.send({
+        cmd: 'replay'
+    });
+    setupReplay();
+}
+
+function setupReplay() {
+    var won = hasWon();
+    clearBoard();
+    if (won) {
+        toggleTurn();
+    } else {
+        setupTurn();
+    }
+    updateGameStatus();
+}
+
 function onGameChannelOpen(channel) {
     $('#waitform').hide('fast');
     $('#gameform').show('fast');
@@ -318,6 +340,7 @@ function onGameChannelOpen(channel) {
 }
 
 var turn;
+var state;
 function onGameChannelMessage(channel, msg) {
     var cmd = msg.cmd;
     if (cmd == 'start' && !isMaster && state == 'connecting') {
@@ -337,6 +360,10 @@ function onGameChannelMessage(channel, msg) {
         state = 'playing';
     } else if (cmd == 'move' && state == 'playing' && !isMyTurn() && cell(msg.x, msg.y).size() == 1) {
         makeMove(msg.x, msg.y);
+    } else if (cmd == 'replay') {
+        if (gameOver()) {
+            setupReplay();
+        }
     } else {
         if (console) console.log('Unknown or wrong message received',  msg);
         gameChannel.close();
@@ -346,9 +373,10 @@ function onGameChannelMessage(channel, msg) {
 function onGameChannelClose(channel) {
     setGameStatus(getPlayerName() + ' left the game', true);
     gameChannel = undefined;
+    state = undefined;
+    startDemo();
 }
 
-var state;
 function startMaster() {
     state = 'connecting';
     if (Math.floor(Math.random() * 2)) {
@@ -449,6 +477,10 @@ var demo = false;
 var demoTimer;
 function startDemo() {
     demo = true;
+    demoTimer = setTimeout(initDemo, 10000);
+}
+
+function initDemo() {
     turn = 'cross';
     clearBoard();
     demoTimer = setTimeout(makeDemoMove, 2000);
@@ -468,7 +500,7 @@ function makeDemoMove() {
         makeMove(x, y);
 
         if (gameOver()) {
-            demoTimer = setTimeout(startDemo, 10000);
+            startDemo();
         } else {
             demoTimer = setTimeout(makeDemoMove, 2000);
         }
@@ -484,27 +516,34 @@ function stopDemo() {
 
 function updateGameStatus() {
     if (!demo) {
+        var again = false;
         var txt = "You're playing with " + getPeerName();
         if (gameOver()) {
             var ply = hasWon();
             if (isMine(ply)) {
-                txt = txt + " - YOU WON! Do you want to play again?"
+                txt = txt + " - YOU WON!"
             } else if (ply) {
-                txt = txt + " - You lose. Do you want to play again?"
+                txt = txt + " - You lose."
             } else {
-                txt = txt + " - It's a draw!. Do you want to play again?"
+                txt = txt + " - It's a draw!"
             }
+            again = true;
         } else if (isMyTurn()) {
             txt = txt + " - It's YOUR turn to play";
         } else {
             txt = txt + " - It's their turn to play";
         }
-        setGameStatus(txt);
+        setGameStatus(txt, false, again);
     }
 }
 
 function sanitize(txt) {
     return txt.substr(0, 20).replace(/[&<>]/g, '');
+}
+
+function updategui() {
+    var name = $('#name').val();
+    $('#newgamebutton').attr('disabled', name == '');
 }
 
 // ****************************************************************
