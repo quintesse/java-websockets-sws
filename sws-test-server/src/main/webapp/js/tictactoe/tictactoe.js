@@ -20,11 +20,11 @@ $(document).ready(function() {
         $('.supported').fadeIn();
         $('.unsupported').fadeOut();
         initBoard();
-        startDemo();
     } else {
         $('.supported').fadeOut();
         $('.unsupported').fadeIn();
     }
+    startDemo();
     $('.disabled').attr('disabled', true);
 });
 
