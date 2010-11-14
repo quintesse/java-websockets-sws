@@ -61,7 +61,7 @@
                 // The following line enables us to receive channel requests
                 // (otherwise we would have to wait until we opened the
                 // first channel from this side)
-                WebChannelManager.associate(sws);
+                WebChannelManager.forSocket(sws);
 
                 $('#main').addClass('spinner');
                 $('#openbutton').attr('disabled', true);

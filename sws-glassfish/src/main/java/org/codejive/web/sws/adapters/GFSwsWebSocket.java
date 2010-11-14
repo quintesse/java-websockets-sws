@@ -28,7 +28,7 @@ import com.sun.grizzly.websockets.WebSocketListener;
  */
 public class GFSwsWebSocket extends BaseServerWebSocket {
 
-    public GFSwsWebSocket(WebSocketListener... newListeners) {
+    public GFSwsWebSocket(WebSocketListener[] newListeners) {
         super(newListeners);
     }
 

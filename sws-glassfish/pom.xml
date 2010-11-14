@@ -23,5 +23,10 @@
             <artifactId>sws-core</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>sws-webchannel</artifactId>
+            <version>${project.version}</version>
+        </dependency>
     </dependencies>
 </project>
