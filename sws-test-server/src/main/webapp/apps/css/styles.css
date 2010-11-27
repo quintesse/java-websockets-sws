@@ -1,3 +1,11 @@
+/* 
+    Document   : styles
+    Created on : Nov 26, 2010, 8:57:17 PM
+    Author     : Tako Schotanus <tako@codejive.org>
+    Description:
+        Generic stylesheet for the example apps.
+*/
+
 body {
     font: normal normal normal 12px/normal 'helvetica neue', helvetica, arial, verdana, tahoma, 'sans serif';
     min-width: 40em;
@@ -12,7 +20,7 @@ p {
 }
 
 .spinner {
-    background-image: url(../../images/spinner.gif);
+    background-image: url(../../../images/spinner.gif);
     background-position: center;
     background-repeat: no-repeat
 }
@@ -48,30 +56,5 @@ p {
     border-radius: 8px;
 }
 
-#board {
-    background-image: url(../../images/tictactoe/tictactoe.png);
-    width: 334px;
-    height: 321px;
-}
-
 #status {
-}
-
-.cell {
-    position: relative;
-    left: 0px; top: 0px;
-}
-
-.cross {
-    background-image: url(../../images/tictactoe/cross.png);
-}
-
-.nought {
-    background-image: url(../../images/tictactoe/nought.png);
-}
-
-.stroke {
-    position: relative;
-    left: 0px; top: 0px;
-    visibility: hidden;
 }

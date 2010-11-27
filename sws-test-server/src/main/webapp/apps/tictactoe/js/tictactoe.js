@@ -16,16 +16,12 @@
  */
 
 $(document).ready(function() {
-    if (window.WebSocket) {
-        $('.supported').fadeIn();
-        $('.unsupported').fadeOut();
-        initBoard();
-    } else {
-        $('.supported').fadeOut();
-        $('.unsupported').fadeIn();
-    }
+    initApp({
+        name : 'tictactoe',
+        title : "{name}'s TicTacToe game"
+    });
+    initBoard();
     startDemo();
-    $('.disabled').attr('disabled', true);
 });
 
 var cellWidth = 80;
@@ -127,187 +123,24 @@ function showWinDiagonal(isTopDown) {
         left: strokeLeft
     });
     if (isTopDown) {
-        stroke.attr('src', 'images/tictactoe/stroketb.png');
+        stroke.attr('src', 'images/stroketb.png');
     } else {
-        stroke.attr('src', 'images/tictactoe/strokebt.png');
+        stroke.attr('src', 'images/strokebt.png');
     }
     stroke.css('visibility', 'visible');
-}
-
-var sws, clientChannel;
-function serverConnect() {
-    setStatus('Connecting...');
-    var path = document.location.pathname;
-    var p = path.lastIndexOf('/');
-    path = path.substring(0, p + 1);
-    var location = 'ws://' + document.location.host + path + 'swsdemo';
-    sws = new StableWebSocket(location);
-    sws.onopen.bind(onSocketOpen);
-    sws.ondisconnect.bind(onSocketDisconnect);
-    sws.onreconnect.bind(onSocketReconnect);
-    sws.onclose.bind(onSocketClose);
-    openClientChannel();
-}
-
-function openClientChannel() {
-    clientChannel = new WebChannel(sws, 'clients', 'sys');
-    clientChannel.logging = true;
-    clientChannel.onmessage.bind(onClientChannelMessage);
-    clientChannel.onclose.bind(onClientChannelClose);
-}
-
-function serverDisconnect() {
-    sws.close();
-}
-
-function onSocketOpen(channel) {
-    $('#connectbutton').fadeOut();
-    $('#disconnectbutton').fadeIn();
-    $('#startform').fadeIn();
-    setStatus('Connected');
-}
-
-function onSocketDisconnect(channel) {
-    setStatus('Connection problems! Trying to re-establish the connection...', true);
-}
-
-function onSocketReconnect(channel) {
-    setStatus('Reconnected');
-}
-
-function onSocketClose(channel) {
-    $('#connectbutton').fadeIn();
-    $('#disconnectbutton').fadeOut();
-    $('#startform').fadeOut();
-    $('#waitform').fadeOut();
-    $('#gameform').fadeOut();
-    setStatus('Disconnected');
-}
-
-function onClientChannelMessage(channel, msg) {
-    var select = $('#games');
-    select.empty();
-    if (msg.clients) {
-        for (var i = 0; i < msg.clients.length; i++) {
-            var client = msg.clients[i];
-            if (client.services && client.id != sws.id()) {
-                for (var j in client.services) {
-                    var srv = client.services[j];
-                    if (srv.name.indexOf('tictactoe$') == 0) {
-                        var url = '//' + client.id + '/' + srv.name;
-                        select.append($(document.createElement("option")).attr("value", url).text(sanitize(srv.description)));
-                    }
-                }
-            }
-        }
-    }
-    $('#joingamebutton').attr('disabled', true);
-    if (select.children().size() > 0) {
-        select.show('fast');
-        $('#joingamebutton').fadeIn();
-    } else {
-        select.hide('fast');
-        $('#joingamebutton').fadeOut();
-    }
-}
-
-function onClientChannelClose(channel) {
-    select.hide('fast');
-    $('#joingamebutton').fadeOut();
-    clientChannel = undefined;
-    if (!sws.isclosed()) {
-        // Retry connection to server in 5 seconds
-        setTimeout(openClientChannel, 5000);
-    }
-}
-
-function setStatus(msg, error) {
-    $('#status').text(msg);
-    if (error) {
-        $('#connectform').addClass('error')
-    } else {
-        $('#connectform').removeClass('error')
-    }
-}
-
-function setWaitStatus(msg, error) {
-    $('#waitstatus').text(msg);
-    if (error) {
-        $('#waitform').addClass('error')
-    } else {
-        $('#waitform').removeClass('error')
-    }
-}
-
-function setGameStatus(msg, error, again) {
-    $('#gamestatus').text(msg);
-    if (error) {
-        $('#gameform').addClass('error')
-    } else {
-        $('#gameform').removeClass('error')
-    }
-    if (again) {
-        $('#playagainbutton').fadeIn();
-    } else {
-        $('#playagainbutton').fadeOut();
-    }
-}
-
-function getPlayerName() {
-    return $('#name').val();
-}
-
-var peerName;
-function getPeerName() {
-    return peerName;
 }
 
 var isMaster;
 function newGame() {
     isMaster = true;
     stopDemo();
-    $('#startform').hide('fast');
-    $('#waitform').fadeIn();
-    setWaitStatus('Waiting for other player to connect...');
-    var name = getPlayerName();
-    var id = "tictactoe$" + sws.id();
-    var service = new TicTacToeGameService(id, name);
-    clientChannel.services().register(id, name + "'s TicTacToe game", service.accept);
+    appCreateService();
 }
 
-function stopWait() {
-    clientChannel.services().unregister("tictactoe$" + sws.id());
-    $('#waitform').fadeOut();
-    $('#startform').show('fast');
-}
-
-function selectGame() {
-    $('#joingamebutton').attr('disabled', false);
-}
-
-var gameChannel;
 function joinGame() {
     isMaster = false;
     stopDemo();
-    $('#startform').hide('fast');
-    $('#waitform').fadeIn();
-    setWaitStatus('Connecting to game...');
-    var url = $('#games').val();
-    gameChannel = new WebChannel(sws, url);
-    gameChannel.logging = true;
-    gameChannel.onopen.bind(onGameChannelOpen);
-    gameChannel.onmessage.bind(onGameChannelMessage);
-    gameChannel.onclose.bind(onGameChannelClose);
-}
-
-function leaveGame() {
-    $('#gameform').fadeOut();
-    if (!sws.isclosed()) {
-        $('#startform').show('fast');
-        if (gameChannel) {
-            gameChannel.close();
-        }
-    }
+    appJoinService();
 }
 
 function replayGame() {
@@ -331,7 +164,7 @@ function setupReplay() {
 function onGameChannelOpen(channel) {
     $('#waitform').hide('fast');
     $('#gameform').show('fast');
-    setGameStatus('Connected. Setting up...');
+    setAppStatus('Connected. Setting up...');
     if (isMaster) {
         startMaster();
     } else {
@@ -371,10 +204,15 @@ function onGameChannelMessage(channel, msg) {
 }
 
 function onGameChannelClose(channel) {
-    setGameStatus(getPlayerName() + ' left the game', true);
+    setAppStatus(getPlayerName() + ' left the game', true);
     gameChannel = undefined;
     state = undefined;
     startDemo();
+}
+
+var peerName;
+function getPeerName() {
+    return peerName;
 }
 
 function startMaster() {
@@ -533,24 +371,15 @@ function updateGameStatus() {
         } else {
             txt = txt + " - It's their turn to play";
         }
-        setGameStatus(txt, false, again);
+        setAppStatus(txt, false, again);
     }
-}
-
-function sanitize(txt) {
-    return txt.substr(0, 20).replace(/[&<>]/g, '');
-}
-
-function updategui() {
-    var name = $('#name').val();
-    $('#newgamebutton').attr('disabled', name == '');
 }
 
 // ****************************************************************
 // TicTacToeGameService
 // ****************************************************************
 
-function TicTacToeGameService(id, name) {
+function TicTacToeGameService() {
     var _self = this;
 
     // ****************************************************************
@@ -562,7 +391,7 @@ function TicTacToeGameService(id, name) {
         channel.onopen.bind(_self.onOpen);
         channel.onmessage.bind(_self.onMessage);
         channel.onclose.bind(_self.onClose);
-        channel.services().unregister(id);
+        channel.services().unregister(_self.accept);
         return true;
     };
 
@@ -577,4 +406,4 @@ function TicTacToeGameService(id, name) {
     _self.onClose = function(channel) {
         onGameChannelClose(channel);
     };
-};
+}
