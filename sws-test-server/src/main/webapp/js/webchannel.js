@@ -392,12 +392,23 @@ function ServiceManager() {
             handler : func
         }
         _services[name] = service;
-        _self.onchange.fire(name, true);
+        _self.onchange.fire(service, true);
     };
 
-    _self.unregister = function(name) {
-        delete _services[name];
-        _self.onchange.fire(name, false);
+    _self.unregister = function(arg) {
+        var name;
+        var service;
+        if (arg instanceof String) {
+            name = arg;
+            service = _services[name];
+        } else {
+            name = _name(arg);
+            service = arg;
+        }
+        if (name) {
+            delete _services[name];
+            _self.onchange.fire(service, false);
+        }
     };
 
     _self.find = function(name) {
@@ -419,6 +430,21 @@ function ServiceManager() {
         return ss;
     }
 
+    // ****************************************************************
+    // PRIVATE METHODS
+    // ****************************************************************
+
+    // Find the name associated with the service or handler being passed
+    function _name(arg) {
+        for (var nm in _services) {
+            var s = _services[nm];
+            if (s == arg || s.handler == arg) {
+                return nm;
+            }
+        }
+        return undefined;
+    }
+    
     var _services = {};
 
     _self.onchange = new EventDispatcher();
