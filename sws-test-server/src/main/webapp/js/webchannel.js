@@ -278,7 +278,7 @@ function WebChannelManager(socket) {
                         var channel = new WebChannel(_socket, serviceName, from, id);
                         channel.logging = true;
                         _channels[id] = channel;
-                        if (service.handler(channel, pkt)) {
+                        if (service.handler(service, channel, pkt)) {
                             if (_self.logging && console) console.log("Channel connection accepted");
                             channel.send({$cmd : "open-ok"});
                             channel._onOpen(from);
@@ -402,7 +402,7 @@ function ServiceManager() {
             name = arg;
             service = _services[name];
         } else {
-            name = _name(arg);
+            name = arg.info.name;
             service = arg;
         }
         if (name) {
@@ -428,21 +428,6 @@ function ServiceManager() {
             ss.push(_services[s].info);
         }
         return ss;
-    }
-
-    // ****************************************************************
-    // PRIVATE METHODS
-    // ****************************************************************
-
-    // Find the name associated with the service or handler being passed
-    function _name(arg) {
-        for (var nm in _services) {
-            var s = _services[nm];
-            if (s == arg || s.handler == arg) {
-                return nm;
-            }
-        }
-        return undefined;
     }
     
     var _services = {};
@@ -480,7 +465,7 @@ var ServicesService = new function ServicesServiceSingleton() {
     // "PUBLIC" METHODS
     // ****************************************************************
 
-    _self.accept = function(channel, pkt) {
+    _self.accept = function(service, channel, pkt) {
         channel.onopen.bind(ServicesService.onOpen);
         return true;
     };
@@ -511,7 +496,7 @@ var ServicesService = new function ServicesServiceSingleton() {
 // ****************************************************************
 
 var EchoService = {
-    accept : function(channel, pkt) {
+    accept : function(service, channel, pkt) {
         channel.onmessage.bind(EchoService.onMessage);
         return true;
     },
@@ -528,7 +513,7 @@ var EchoService = {
 // ****************************************************************
 
 var TimeService = {
-    accept : function(channel, pkt) {
+    accept : function(service, channel, pkt) {
         channel.onclose.bind(TimeService.onClose);
         channel._time_service_interval = setInterval(function() {
             channel.send({ time : new Date() });
