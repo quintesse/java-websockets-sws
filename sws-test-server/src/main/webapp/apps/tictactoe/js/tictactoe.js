@@ -144,7 +144,7 @@ function joinGame() {
 }
 
 function replayGame() {
-    gameChannel.send({
+    appChannels[0].send({
         cmd: 'replay'
     });
     setupReplay();
@@ -161,7 +161,7 @@ function setupReplay() {
     updateGameStatus();
 }
 
-function onGameChannelOpen(channel) {
+function onAppChannelsOpen(channel) {
     $('#waitform').hide('fast');
     $('#gameform').show('fast');
     setAppStatus('Connected. Setting up...');
@@ -174,13 +174,13 @@ function onGameChannelOpen(channel) {
 
 var turn;
 var state;
-function onGameChannelMessage(channel, msg) {
+function onAppChannelsMessage(channel, msg) {
     var cmd = msg.cmd;
     if (cmd == 'start' && !isMaster && state == 'connecting') {
         peerName = sanitize(msg.name);
         turn = msg.start;
         updateGameStatus();
-        gameChannel.send({
+        channel.send({
             cmd: 'startok',
             name: getPlayerName()
         });
@@ -199,13 +199,14 @@ function onGameChannelMessage(channel, msg) {
         }
     } else {
         if (console) console.log('Unknown or wrong message received',  msg);
-        gameChannel.close();
+        channel.close();
     }
 }
 
-function onGameChannelClose(channel) {
+function onAppChannelsClose(channel) {
     setAppStatus(getPlayerName() + ' left the game', true);
-    gameChannel = undefined;
+    var idx = indexOf(appChannels, channel);
+    appChannels.splice(idx, 1);
     state = undefined;
     startDemo();
 }
@@ -222,7 +223,7 @@ function startMaster() {
     } else {
         turn = 'nought';
     }
-    gameChannel.send({
+    appChannels[0].send({
         cmd: 'start',
         name: getPlayerName(),
         start: turn
@@ -263,7 +264,7 @@ function toggleTurn() {
 function makeMove(x, y) {
     var c = cell(x, y);
     if (isMyTurn()) {
-        gameChannel.send({
+        appChannels[0].send({
             cmd: 'move',
             x: x,
             y: y
@@ -387,7 +388,7 @@ function TicTacToeGameService() {
     // ****************************************************************
 
     _self.accept = function(channel, pkt) {
-        gameChannel = channel;
+        appChannels.push(channel);
         channel.onopen.bind(_self.onOpen);
         channel.onmessage.bind(_self.onMessage);
         channel.onclose.bind(_self.onClose);
@@ -396,14 +397,14 @@ function TicTacToeGameService() {
     };
 
     _self.onOpen = function(channel) {
-        onGameChannelOpen(channel);
+        onAppChannelsOpen(channel);
     };
 
     _self.onMessage = function(channel, msg) {
-        onGameChannelMessage(channel, msg);
+        onAppChannelsMessage(channel, msg);
     };
 
     _self.onClose = function(channel) {
-        onGameChannelClose(channel);
+        onAppChannelsClose(channel);
     };
 }

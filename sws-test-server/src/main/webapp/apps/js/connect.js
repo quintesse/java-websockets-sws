@@ -18,7 +18,7 @@
 var app;
 var sws;
 var clientChannel;
-var gameChannel;
+var appChannels = [];
 
 function initApp(apparg) {
     app = apparg;
@@ -158,20 +158,21 @@ function appJoinService() {
     $('#waitform').fadeIn();
     setWaitStatus('Connecting to game...');
     var url = $('#games').val();
-    gameChannel = new WebChannel(sws, url);
-    gameChannel.logging = true;
-    gameChannel.onopen.bind(onGameChannelOpen);
-    gameChannel.onmessage.bind(onGameChannelMessage);
-    gameChannel.onclose.bind(onGameChannelClose);
+    appChannels[0] = new WebChannel(sws, url);
+    appChannels[0].logging = true;
+    appChannels[0].onopen.bind(onappChannelsOpen);
+    appChannels[0].onmessage.bind(onappChannelsMessage);
+    appChannels[0].onclose.bind(onappChannelsClose);
 }
 
 function appLeaveService() {
     $('#gameform').fadeOut();
     if (!sws.isclosed()) {
         $('#startform').show('fast');
-        if (gameChannel) {
-            gameChannel.close();
+        for (var i = 0; i < appChannels.length; i++) {
+            appChannels[i].close();
         }
+        appChannels = [];
     }
 }
 
