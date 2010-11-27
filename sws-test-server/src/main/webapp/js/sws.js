@@ -42,9 +42,24 @@ function StableWebSocket(url) {
         return !_closed && _connected && !_reconnecting;
     };
 
-    // Returns if the socket is ready to send data or not.
+    // Returns if the socket is closed or not.
     _self.isclosed = function() {
         return _closed;
+    };
+
+    // Returns if the socket was closed remotely or not.
+    _self.isclosedRemotely = function() {
+        return _closedRemotely;
+    };
+
+    // Returns if the socket was closed due to an error or not.
+    _self.isbroken = function() {
+        return _closedBroken;
+    };
+
+    // Returns the manner in which the socket was closed.
+    _self.closeStatus = function() {
+        return _self.isbroken() ? 'broken' : _self.isclosedRemotely() ? 'remote' : 'local';
     };
 
     // Sends data to the server.
@@ -148,9 +163,11 @@ function StableWebSocket(url) {
             && msg.data.substr(13) == _sessionId) {
                 // Received a proper close message from the server, shutting down
                 if (_self.logging && console) console.log("Received close message for session", _sessionId, "Connect aborted");
+                _closedBroken = true;
                 _close();
             } else {
                 if (_self.logging && console) console.log("Unknown message received! Closing", msg.data);
+                _closedBroken = true;
                 _close();
             }
         }
@@ -165,6 +182,7 @@ function StableWebSocket(url) {
             && msg.data.substr(13) == _sessionId) {
                 // Received a proper close message from the server, shutting down
                 if (_self.logging && console) console.log("Received close message for session", _sessionId);
+                _closedRemotely = true;
                 _close();
             }
 
@@ -254,6 +272,7 @@ function StableWebSocket(url) {
     // server within the alotted time
     function _autoDisconnect() {
         if (_self.logging && console) console.log("Auto-disconnect timer fired, closing...");
+        _closedBroken = true;
         _socket.close();
     }
 
@@ -308,6 +327,8 @@ function StableWebSocket(url) {
     var _connected = false;
     var _reconnecting = false;
     var _closed = true;
+    var _closedRemotely = false;
+    var _closedBroken = false;
     var _reconnect = false;
     var _recvCount = 0;
     var _sendCount = 0;

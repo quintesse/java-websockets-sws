@@ -47,6 +47,21 @@ function WebChannel(socket, service, arg1, arg2) {
         return _closed;
     }
 
+    // Returns if the channel was closed remotely or not.
+    _self.isclosedRemotely = function() {
+        return _closedRemotely || _socket.isclosedRemotely();
+    };
+
+    // Returns if the channel was closed due to an error or not.
+    _self.isbroken = function() {
+        return _closedBroken || _socket.isbroken();
+    };
+
+    // Returns the manner in which the channel was closed.
+    _self.closeStatus = function() {
+        return _self.isbroken() ? 'broken' : _self.isclosedRemotely() ? 'remote' : 'local';
+    };
+
     // Sends a message to the peer
     _self.send = function(pkt) {
         _send(pkt);
@@ -108,8 +123,13 @@ function WebChannel(socket, service, arg1, arg2) {
     }
 
     // Handles closing of the web socket
-    _self._onClose = function() {
+    _self._onClose = function(reason) {
         if (_self.logging && console) console.log("Channel", _id, "closing");
+        if (reason == 'remote') {
+            _closedRemotely = true;
+        } else if (reason == 'broken') {
+            _closedBroken = true;
+        }
         _close();
     }
 
@@ -173,6 +193,8 @@ function WebChannel(socket, service, arg1, arg2) {
     var _manager = undefined;
     var _connected = false;
     var _closed = true;
+    var _closedRemotely = false;
+    var _closedBroken = false;
     var _ready = false;
     var _recvCount = 0;
     var _sendCount = 0;
@@ -244,7 +266,8 @@ function WebChannelManager(socket) {
     function _onClose(socket) {
         if (_self.logging && console) console.log("WebChannelManager's underlying socket closed");
         _for(function(channel) {
-            channel._onClose();
+            var reason = socket.closeStatus();
+            channel._onClose(reason);
         });
     }
 
@@ -302,10 +325,10 @@ function WebChannelManager(socket) {
                         channel._onOpen(from);
                     } else if (command == "open-fail") {
                         if (_self.logging && console) console.log("Received 'open-fail' message for channel", to, "because", pkt["reason"]);
-                        channel._onClose();
+                        channel._onClose('broken');
                     } else if (command == "close") {
                         if (_self.logging && console) console.log("Received 'close' message for channel", to);
-                        channel._onClose();
+                        channel._onClose('remote');
                     } else if (command == "peer-disconnect") {
                         if (_self.logging && console) console.log("Received 'peer-disconnect' message for channel", to);
                         channel._onDisconnect();
@@ -398,7 +421,7 @@ function ServiceManager() {
     _self.unregister = function(arg) {
         var name;
         var service;
-        if (arg instanceof String) {
+        if (typeof(arg) == 'string') {
             name = arg;
             service = _services[name];
         } else {
