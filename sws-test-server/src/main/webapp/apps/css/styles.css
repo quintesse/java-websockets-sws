@@ -8,8 +8,6 @@
 
 body {
     font: normal normal normal 12px/normal 'helvetica neue', helvetica, arial, verdana, tahoma, 'sans serif';
-    min-width: 40em;
-    max-width: 73em;
 }
 
 p {
@@ -25,11 +23,11 @@ p {
     background-repeat: no-repeat
 }
 
-.supported {
+.websocket {
     display: none;
 }
 
-.unsupported {
+.nowebsocket {
     display: none;
 }
 

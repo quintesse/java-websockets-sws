@@ -6,6 +6,11 @@
         Main stylesheet for the tic tac toe game
 */
 
+#main {
+    min-width: 40em;
+    max-width: 73em;
+}
+
 #board {
     background-image: url(../images/tictactoe.png);
     width: 334px;
