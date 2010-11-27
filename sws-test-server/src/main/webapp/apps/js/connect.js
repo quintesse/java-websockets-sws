@@ -15,201 +15,229 @@
  * under the License.
  */
 
-var app;
-var sws;
-var clientChannel;
-var appChannels = [];
-
-function initApp(apparg) {
-    app = apparg;
-    if (!app.init) app.init = function() {};
+function App(config) {
+    var _self = this;
     
-    var supported = hasWebSockets();
-    if (supported) {
-        $('.supported').fadeIn();
-        $('.unsupported').fadeOut();
-        app.init();
-    } else {
-        $('.supported').fadeOut();
-        $('.unsupported').fadeIn();
+    // ****************************************************************
+    // "PUBLIC" METHODS
+    // ****************************************************************
+
+    _self.start = function() {
+        setStatus('Connecting...');
+        _sws = new StableWebSocket(config.url);
+        _sws.onopen.bind(_onSocketOpen);
+        _sws.ondisconnect.bind(_onSocketDisconnect);
+        _sws.onreconnect.bind(_onSocketReconnect);
+        _sws.onclose.bind(_onSocketClose);
+        _openClientChannel();
     }
-    $('.disabled').attr('disabled', true);
-    return supported;
-}
 
-function startApp() {
-    setStatus('Connecting...');
-    var path = document.location.pathname;
-    var p = path.lastIndexOf('/');
-    path = path.substring(0, p + 1);
-    var location = 'ws://' + document.location.host + path + 'swsdemo';
-    sws = new StableWebSocket(location);
-    sws.onopen.bind(onSocketOpen);
-    sws.ondisconnect.bind(onSocketDisconnect);
-    sws.onreconnect.bind(onSocketReconnect);
-    sws.onclose.bind(onSocketClose);
-    openClientChannel();
-}
-
-function stopApp() {
-    sws.close();
-}
-
-function setAppStatus(msg, error, again) {
-    $('#gamestatus').text(msg);
-    if (error) {
-        $('#gameform').addClass('error')
-    } else {
-        $('#gameform').removeClass('error')
+    _self.stop = function() {
+        _sws.close();
+        _sws = undefined;
     }
-    if (again) {
-        $('#playagainbutton').fadeIn();
-    } else {
-        $('#playagainbutton').fadeOut();
+    
+    _self.setStatus = function(msg, error, again) {
+        $('#gamestatus').text(msg);
+        if (error) {
+            $('#gameform').addClass('error')
+        } else {
+            $('#gameform').removeClass('error')
+        }
+        if (again) {
+            $('#playagainbutton').fadeIn();
+        } else {
+            $('#playagainbutton').fadeOut();
+        }
     }
-}
 
-function onSocketOpen(channel) {
-    $('#connectbutton').fadeOut();
-    $('#disconnectbutton').fadeIn();
-    $('#startform').fadeIn();
-    updategui();
-    setStatus('Connected');
-}
+    _self.createService = function() {
+        $('#startform').hide('fast');
+        $('#waitform').fadeIn();
+        setWaitStatus('Waiting for other player to connect...');
+        var name = getPlayerName();
+        var id = config.name + '$' + _sws.id();
+        var title = config.title.replace("{name}", name);
+        _clientChannel.services().register(id, title, _serviceAccept);
+    }
+    
+    _self.cancelService = function() {
+        _clientChannel.services().unregister(config.name + '$' + _sws.id());
+        $('#waitform').fadeOut();
+        $('#startform').show('fast');
+    }
 
-function onSocketDisconnect(channel) {
-    setStatus('Connection problems! Trying to re-establish the connection...', true);
-}
+    _self.joinService = function() {
+        $('#startform').hide('fast');
+        $('#waitform').fadeIn();
+        setWaitStatus('Connecting to game...');
+        var url = $('#games').val();
+        var channel = new WebChannel(_sws, url);
+        channel.logging = true;
+        _addAppChannel(channel);
+    }
 
-function onSocketReconnect(channel) {
-    setStatus('Reconnected');
-}
+    _self.leaveService = function() {
+        $('#gameform').fadeOut();
+        if (!_sws.isclosed()) {
+            $('#startform').show('fast');
+            for (var i = 0; i < _appChannels.length; i++) {
+                _appChannels[i].close();
+            }
+            _appChannels = [];
+        }
+    }
 
-function onSocketClose(channel) {
-    $('#connectbutton').fadeIn();
-    $('#disconnectbutton').fadeOut();
-    $('#startform').fadeOut();
-    $('#waitform').fadeOut();
-    $('#gameform').fadeOut();
-    setStatus('Disconnected');
-}
+    _self.broadcast = function(msg) {
+        for (var i = 0; i < _appChannels.length; i++) {
+            _appChannels[i].send(msg);
+        }
+    }
+    
+    // ****************************************************************
+    // PRIVATE METHODS
+    // ****************************************************************
 
-function openClientChannel() {
-    clientChannel = new WebChannel(sws, 'clients', 'sys');
-    clientChannel.logging = true;
-    clientChannel.onmessage.bind(onClientChannelMessage);
-    clientChannel.onclose.bind(onClientChannelClose);
-}
+    function _init() {
+        if (hasWebSockets()) {
+            $('.websocket').fadeIn();
+            $('.nowebsocket').fadeOut();
+            if (config.init) config.init();
+        } else {
+            $('.websocket').fadeOut();
+            $('.nowebsocket').fadeIn();
+        }
+        $('.disabled').attr('disabled', true);
+    }
 
-function onClientChannelMessage(channel, msg) {
-    var select = $('#games');
-    select.empty();
-    if (msg.clients) {
-        for (var i = 0; i < msg.clients.length; i++) {
-            var client = msg.clients[i];
-            if (client.services && client.id != sws.id()) {
-                for (var j in client.services) {
-                    var srv = client.services[j];
-                    if (srv.name.indexOf(app.name + '$') == 0) {
-                        var url = '//' + client.id + '/' + srv.name;
-                        select.append($(document.createElement("option")).attr("value", url).text(sanitize(srv.description)));
+    function _onSocketOpen(channel) {
+        $('#connectbutton').fadeOut();
+        $('#disconnectbutton').fadeIn();
+        $('#startform').fadeIn();
+        updategui();
+        setStatus('Connected');
+    }
+
+    function _onSocketDisconnect(channel) {
+        setStatus('Connection problems! Trying to re-establish the connection...', true);
+    }
+
+    function _onSocketReconnect(channel) {
+        setStatus('Reconnected');
+    }
+
+    function _onSocketClose(channel) {
+        $('#connectbutton').fadeIn();
+        $('#disconnectbutton').fadeOut();
+        $('#startform').fadeOut();
+        $('#waitform').fadeOut();
+        $('#gameform').fadeOut();
+        setStatus('Disconnected');
+    }
+
+    function _openClientChannel() {
+        _clientChannel = new WebChannel(_sws, 'clients', 'sys');
+        _clientChannel.logging = true;
+        _clientChannel.onmessage.bind(_onClientChannelMessage);
+        _clientChannel.onclose.bind(_onClientChannelClose);
+    }
+
+    function _onClientChannelMessage(channel, msg) {
+        var select = $('#games');
+        select.empty();
+        if (msg.clients) {
+            for (var i = 0; i < msg.clients.length; i++) {
+                var client = msg.clients[i];
+                if (client.services && client.id != _sws.id()) {
+                    for (var j in client.services) {
+                        var srv = client.services[j];
+                        if (srv.name.indexOf(config.name + '$') == 0) {
+                            var url = '//' + client.id + '/' + srv.name;
+                            select.append($(document.createElement("option")).attr("value", url).text(sanitize(srv.description)));
+                        }
                     }
                 }
             }
         }
+        $('#joingamebutton').attr('disabled', true);
+        if (select.children().size() > 0) {
+            select.show('fast');
+            $('#joingamebutton').fadeIn();
+        } else {
+            select.hide('fast');
+            $('#joingamebutton').fadeOut();
+        }
     }
-    $('#joingamebutton').attr('disabled', true);
-    if (select.children().size() > 0) {
-        select.show('fast');
-        $('#joingamebutton').fadeIn();
-    } else {
+
+    function _onClientChannelClose(channel) {
+        var select = $('#games');
         select.hide('fast');
         $('#joingamebutton').fadeOut();
+        _clientChannel = undefined;
+        if (!_sws.isclosed()) {
+            // Retry connection to server in 5 seconds
+            setTimeout(_openClientChannel, 5000);
+        }
     }
-}
 
-function onClientChannelClose(channel) {
-    select.hide('fast');
-    $('#joingamebutton').fadeOut();
-    clientChannel = undefined;
-    if (!sws.isclosed()) {
-        // Retry connection to server in 5 seconds
-        setTimeout(openClientChannel, 5000);
+    function _serviceAccept(service, channel, pkt) {
+        var result = true;
+        if (config.accept) {
+            result = config.accept(service, channel, pkt);
+        }
+        if (result) {
+            _addAppChannel(channel);
+        }
+        return result;
     }
+    
+    function _onAppChannelOpen(channel) {
+        $('#waitform').hide('fast');
+        $('#gameform').show('fast');
+        _self.setStatus('Connected. Setting up...');
+        if (config.onopen) config.onopen(_self, channel);
+    }
+
+    function _onAppChannelMessage(channel, msg) {
+        if (config.onmessage) config.onmessage(_self, channel, msg);
+    }
+
+    function _onAppChannelDisconnect(channel) {
+        if (config.ondisconnect) config.ondisconnect(_self, channel);
+    }
+
+    function _onAppChannelReconnect(channel) {
+        if (config.onreconnect) config.onreconnect(_self, channel);
+    }
+
+    function _onAppChannelClose(channel) {
+        _removeAppChannel(channel);
+        if (config.onclose) config.onclose(_self, channel);
+    }
+    
+    function _addAppChannel(channel) {
+        _appChannels.push(channel);
+        channel.onopen.bind(_onAppChannelOpen);
+        channel.onmessage.bind(_onAppChannelMessage);
+        channel.ondisconnect.bind(_onAppChannelDisconnect);
+        channel.onreconnect.bind(_onAppChannelReconnect);
+        channel.onclose.bind(_onAppChannelClose);
+    }
+    
+    function _removeAppChannel(channel) {
+        var idx = indexOf(_appChannels, channel);
+        _appChannels.splice(idx, 1);
+    }
+
+    var _sws = undefined;
+    var _clientChannel = undefined;
+    var _appChannels = [];
+
+    _init();
 }
 
 function getPlayerName() {
     return $('#name').val();
-}
-
-function appCreateService() {
-    $('#startform').hide('fast');
-    $('#waitform').fadeIn();
-    setWaitStatus('Waiting for other player to connect...');
-    var name = getPlayerName();
-    var id = app.name + '$' + sws.id();
-    var title = app.title.replace("{name}", name);
-    clientChannel.services().register(id, title, _serviceAccept);
-}
-
-function appJoinService() {
-    $('#startform').hide('fast');
-    $('#waitform').fadeIn();
-    setWaitStatus('Connecting to game...');
-    var url = $('#games').val();
-    appChannels[0] = new WebChannel(sws, url);
-    appChannels[0].logging = true;
-    appChannels[0].onopen.bind(_onAppChannelOpen);
-    if (app.onmessage) appChannels[0].onmessage.bind(app.onmessage);
-    if (app.ondisconnect) appChannels[0].ondisconnect.bind(app.ondisconnect);
-    if (app.onreconnect) appChannels[0].onreconnect.bind(app.onreconnect);
-    appChannels[0].onclose.bind(_onAppChannelClose);
-}
-
-function appLeaveService() {
-    $('#gameform').fadeOut();
-    if (!sws.isclosed()) {
-        $('#startform').show('fast');
-        for (var i = 0; i < appChannels.length; i++) {
-            appChannels[i].close();
-        }
-        appChannels = [];
-    }
-}
-
-function _serviceAccept(service, channel, pkt) {
-    var result = true;
-    if (app.accept) {
-        result = app.accept(service, channel, pkt);
-    }
-    if (result) {
-        appChannels.push(channel);
-        channel.onopen.bind(_onAppChannelOpen);
-        if (app.onmessage) channel.onmessage.bind(app.onmessage);
-        if (app.ondisconnect) channel.ondisconnect.bind(app.ondisconnect);
-        if (app.onreconnect) channel.onreconnect.bind(app.onreconnect);
-        channel.onclose.bind(_onAppChannelClose);
-    }
-    return result;
-}
-
-function _onAppChannelOpen(channel) {
-    $('#waitform').hide('fast');
-    $('#gameform').show('fast');
-    setAppStatus('Connected. Setting up...');
-    if (app.onopen) app.onopen();
-}
-
-function _onAppChannelClose(channel) {
-    var idx = indexOf(appChannels, channel);
-    appChannels.splice(idx, 1);
-    if (app.onclose) app.onclose();
-}
-
-function stopWait() {
-    clientChannel.services().unregister(app.name + '$' + sws.id());
-    $('#waitform').fadeOut();
-    $('#startform').show('fast');
 }
 
 function selectApp() {
@@ -236,6 +264,14 @@ function setWaitStatus(msg, error) {
     } else {
         $('#waitform').removeClass('error')
     }
+}
+
+function servletLocation(servletName) {
+    var path = document.location.pathname;
+    var p = path.lastIndexOf('/');
+    path = path.substring(0, p + 1);
+    var location = 'ws://' + document.location.host + path + servletName;
+    return location;
 }
 
 function sanitize(txt) {

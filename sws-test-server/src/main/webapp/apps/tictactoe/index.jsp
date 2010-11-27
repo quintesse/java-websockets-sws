@@ -18,17 +18,17 @@
     <body id="main">
         <h1>Tic Tac Toe</h1>
 
-        <p class="warningbox unsupported">
+        <p class="warningbox nowebsocket">
             Sorry, your browser does not support WebSockets, which means that you will not be
             able to use the application on this page. You can find information about compatible
             browsers <a href="http://en.wikipedia.org/wiki/WebSockets" target="_blank">here</a>
         </p>
 
-        <div class="supported">
+        <div class="websocket">
             <p id="connectform" class="formbox">
-                <input id="connectbutton" type="button" value="Connect" onClick="startApp()">
+                <input id="connectbutton" type="button" value="Connect" onClick="app.start()">
                 <span id="status">Click button to connect</span>
-                <input id="disconnectbutton" type="button" value="Disconnect" class="hidden" onClick="stopApp()">
+                <input id="disconnectbutton" type="button" value="Disconnect" class="hidden" onClick="app.stop()">
             </p>
 
             <p id="startform" class="formbox hidden">
@@ -40,12 +40,12 @@
             </p>
 
             <p id="waitform" class="formbox hidden">
-                <input id="stopwaitbutton" type="button" value="Stop Waiting" onClick="stopWait()">
+                <input id="stopwaitbutton" type="button" value="Stop Waiting" onClick="app.cancelService()">
                 <span id="waitstatus"></span>
             </p>
 
             <p id="gameform" class="formbox hidden">
-                <input id="leavegamebutton" type="button" value="Leave Game" onClick="appLeaveService()">
+                <input id="leavegamebutton" type="button" value="Leave Game" onClick="app.leaveService()">
                 <span id="gamestatus"></span>
                 <input id="playagainbutton" class="hidden" type="button" value="Play Again" onClick="replayGame()">
             </p>

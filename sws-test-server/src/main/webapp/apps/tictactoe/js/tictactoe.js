@@ -15,10 +15,13 @@
  *  under the License.
  */
 
+var app;
 $(document).ready(function() {
-    initApp({
+    var location = servletLocation('swsdemo');
+    app = new App({
         name : 'tictactoe',
         title : "{name}'s TicTacToe game",
+        url : location,
         accept : onGameChannelAccept,
         onopen : onGameChannelsOpen,
         onmessage : onGameChannelsMessage,
@@ -138,17 +141,17 @@ var isMaster;
 function newGame() {
     isMaster = true;
     stopDemo();
-    appCreateService();
+    app.createService();
 }
 
 function joinGame() {
     isMaster = false;
     stopDemo();
-    appJoinService();
+    app.joinService();
 }
 
 function replayGame() {
-    appChannels[0].send({
+    app.broadcast({
         cmd: 'replay'
     });
     setupReplay();
@@ -170,17 +173,17 @@ function onGameChannelAccept(service, channel, pkt) {
     return true;
 }
 
-function onGameChannelsOpen(channel) {
+function onGameChannelsOpen(app, channel) {
     if (isMaster) {
-        startMaster();
+        startMaster(channel);
     } else {
-        startSlave();
+        startSlave(channel);
     }
 }
 
 var turn;
 var state;
-function onGameChannelsMessage(channel, msg) {
+function onGameChannelsMessage(app, channel, msg) {
     var cmd = msg.cmd;
     if (cmd == 'start' && !isMaster && state == 'connecting') {
         peerName = sanitize(msg.name);
@@ -209,8 +212,16 @@ function onGameChannelsMessage(channel, msg) {
     }
 }
 
-function onGameChannelsClose(channel) {
-    setAppStatus(getPlayerName() + ' left the game', true);
+function onGameChannelsClose(app, channel) {
+    var txt;
+    if (channel.isbroken()) {
+        txt = "Connection broken";
+    } else if (channel.isclosedRemotely) {
+        txt = getPeerName() + ' left the game';
+    } else {
+        txt = getPlayerName() + ' left the game';
+    }
+    app.setStatus(txt, true);
     state = undefined;
     startDemo();
 }
@@ -220,14 +231,14 @@ function getPeerName() {
     return peerName;
 }
 
-function startMaster() {
+function startMaster(channel) {
     state = 'connecting';
     if (Math.floor(Math.random() * 2)) {
         turn = 'cross';
     } else {
         turn = 'nought';
     }
-    appChannels[0].send({
+    channel.send({
         cmd: 'start',
         name: getPlayerName(),
         start: turn
@@ -235,7 +246,7 @@ function startMaster() {
     clearBoard();
 }
 
-function startSlave() {
+function startSlave(channel) {
     state = 'connecting';
     clearBoard();
 }
@@ -268,7 +279,7 @@ function toggleTurn() {
 function makeMove(x, y) {
     var c = cell(x, y);
     if (isMyTurn()) {
-        appChannels[0].send({
+        app.broadcast({
             cmd: 'move',
             x: x,
             y: y
@@ -376,6 +387,6 @@ function updateGameStatus() {
         } else {
             txt = txt + " - It's their turn to play";
         }
-        setAppStatus(txt, false, again);
+        app.setStatus(txt, false, again);
     }
 }
