@@ -18,7 +18,11 @@
 $(document).ready(function() {
     initApp({
         name : 'tictactoe',
-        title : "{name}'s TicTacToe game"
+        title : "{name}'s TicTacToe game",
+        accept : onGameChannelAccept,
+        onopen : onGameChannelsOpen,
+        onmessage : onGameChannelsMessage,
+        onclose : onGameChannelsClose
     });
     initBoard();
     startDemo();
@@ -161,10 +165,12 @@ function setupReplay() {
     updateGameStatus();
 }
 
-function onAppChannelsOpen(channel) {
-    $('#waitform').hide('fast');
-    $('#gameform').show('fast');
-    setAppStatus('Connected. Setting up...');
+function onGameChannelAccept(service, channel, pkt) {
+    channel.services().unregister(service);
+    return true;
+}
+
+function onGameChannelsOpen(channel) {
     if (isMaster) {
         startMaster();
     } else {
@@ -174,7 +180,7 @@ function onAppChannelsOpen(channel) {
 
 var turn;
 var state;
-function onAppChannelsMessage(channel, msg) {
+function onGameChannelsMessage(channel, msg) {
     var cmd = msg.cmd;
     if (cmd == 'start' && !isMaster && state == 'connecting') {
         peerName = sanitize(msg.name);
@@ -203,10 +209,8 @@ function onAppChannelsMessage(channel, msg) {
     }
 }
 
-function onAppChannelsClose(channel) {
+function onGameChannelsClose(channel) {
     setAppStatus(getPlayerName() + ' left the game', true);
-    var idx = indexOf(appChannels, channel);
-    appChannels.splice(idx, 1);
     state = undefined;
     startDemo();
 }
@@ -374,37 +378,4 @@ function updateGameStatus() {
         }
         setAppStatus(txt, false, again);
     }
-}
-
-// ****************************************************************
-// TicTacToeGameService
-// ****************************************************************
-
-function TicTacToeGameService() {
-    var _self = this;
-
-    // ****************************************************************
-    // "PUBLIC" METHODS
-    // ****************************************************************
-
-    _self.accept = function(channel, pkt) {
-        appChannels.push(channel);
-        channel.onopen.bind(_self.onOpen);
-        channel.onmessage.bind(_self.onMessage);
-        channel.onclose.bind(_self.onClose);
-        channel.services().unregister(_self.accept);
-        return true;
-    };
-
-    _self.onOpen = function(channel) {
-        onAppChannelsOpen(channel);
-    };
-
-    _self.onMessage = function(channel, msg) {
-        onAppChannelsMessage(channel, msg);
-    };
-
-    _self.onClose = function(channel) {
-        onAppChannelsClose(channel);
-    };
 }

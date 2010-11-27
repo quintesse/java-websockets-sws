@@ -148,9 +148,8 @@ function appCreateService() {
     setWaitStatus('Waiting for other player to connect...');
     var name = getPlayerName();
     var id = app.name + '$' + sws.id();
-    var service = new TicTacToeGameService(id, name);
     var title = app.title.replace("{name}", name);
-    clientChannel.services().register(id, title, service.accept);
+    clientChannel.services().register(id, title, _serviceAccept);
 }
 
 function appJoinService() {
@@ -160,9 +159,11 @@ function appJoinService() {
     var url = $('#games').val();
     appChannels[0] = new WebChannel(sws, url);
     appChannels[0].logging = true;
-    appChannels[0].onopen.bind(onappChannelsOpen);
-    appChannels[0].onmessage.bind(onappChannelsMessage);
-    appChannels[0].onclose.bind(onappChannelsClose);
+    appChannels[0].onopen.bind(_onAppChannelOpen);
+    if (app.onmessage) appChannels[0].onmessage.bind(app.onmessage);
+    if (app.ondisconnect) appChannels[0].ondisconnect.bind(app.ondisconnect);
+    if (app.onreconnect) appChannels[0].onreconnect.bind(app.onreconnect);
+    appChannels[0].onclose.bind(_onAppChannelClose);
 }
 
 function appLeaveService() {
@@ -174,6 +175,35 @@ function appLeaveService() {
         }
         appChannels = [];
     }
+}
+
+function _serviceAccept(service, channel, pkt) {
+    var result = true;
+    if (app.accept) {
+        result = app.accept(service, channel, pkt);
+    }
+    if (result) {
+        appChannels.push(channel);
+        channel.onopen.bind(_onAppChannelOpen);
+        if (app.onmessage) channel.onmessage.bind(app.onmessage);
+        if (app.ondisconnect) channel.ondisconnect.bind(app.ondisconnect);
+        if (app.onreconnect) channel.onreconnect.bind(app.onreconnect);
+        channel.onclose.bind(_onAppChannelClose);
+    }
+    return result;
+}
+
+function _onAppChannelOpen(channel) {
+    $('#waitform').hide('fast');
+    $('#gameform').show('fast');
+    setAppStatus('Connected. Setting up...');
+    if (app.onopen) app.onopen();
+}
+
+function _onAppChannelClose(channel) {
+    var idx = indexOf(appChannels, channel);
+    appChannels.splice(idx, 1);
+    if (app.onclose) app.onclose();
 }
 
 function stopWait() {
