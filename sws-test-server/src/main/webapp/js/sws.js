@@ -320,7 +320,7 @@ function StableWebSocket(url) {
     _self.url = url;
     _self.logging = false;
     _self.autoDisconnectTimeout = 20000;
-    _self.keepaliveTimeout = 30000;
+    _self.keepaliveTimeout = 0;
     _self.reconnectDelay = 3000;
     _self.maxReconnect = 10;
 
@@ -359,6 +359,26 @@ function clone(obj){
         newObj = obj;
     }
     return newObj;
+}
+
+function indexOf(obj, val) {
+    if (obj instanceof Array) {
+        for (var i = 0; i < obj.length; i++) {
+            if (obj[i] == val) {
+                return i;
+            }
+        }
+        return undefined;
+    } else if (obj instanceof Object) {
+        for (var j in obj) {
+            if (obj[j] == val) {
+                return j;
+            }
+        }
+        return undefined;
+    } else {
+        return undefined;
+    }
 }
 
 function EventDispatcher() {
