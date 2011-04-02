@@ -37,6 +37,15 @@ var cellHeight = 82;
 // Initializes the board moving all the elements to their
 // correct positions
 function initBoard() {
+    if (hasWebSockets()) {
+        $('.websocket').fadeIn();
+        $('.nowebsocket').fadeOut();
+    } else {
+        $('.websocket').fadeOut();
+        $('.nowebsocket').fadeIn();
+    }
+    $('.disabled').attr('disabled', true);
+
     var p = $('#board').offset();
     var boardLeft = p.left + 50;
     var boardTop = p.top + 46;
