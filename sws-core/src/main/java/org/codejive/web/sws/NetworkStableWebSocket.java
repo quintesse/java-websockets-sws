@@ -88,7 +88,18 @@ public class NetworkStableWebSocket implements StableWebSocket {
     @Override
     public void sendMessage(String msg) throws IOException {
         if (isOpen()) {
-            socket.sendMessage(msg);
+            try {
+                socket.sendMessage(msg);
+            } catch (IOException ex) {
+                // Sometimes we don't get notified that the connection has been closed??
+                try {
+                    // So we make sure
+                    socket.close();
+                } catch (IOException ex2) {
+                    // Ignore
+                }
+                throw ex;
+            }
         } else {
             throw new IOException("Socket not open");
         }
