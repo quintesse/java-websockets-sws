@@ -33,8 +33,10 @@ function App(config) {
     }
 
     _self.stop = function() {
-        _sws.close();
-        _sws = undefined;
+        if (_sws) {
+            _sws.close();
+            _sws = undefined;
+        }
     }
     
     _self.setStatus = function(msg, error, again) {
@@ -100,14 +102,13 @@ function App(config) {
 
     function _init() {
         if (hasWebSockets()) {
-            $('.websocket').fadeIn();
-            $('.nowebsocket').fadeOut();
             if (config.init) config.init();
-        } else {
-            $('.websocket').fadeOut();
-            $('.nowebsocket').fadeIn();
+            // Make sure we shut down cleanly if the user closes the browser
+            // or navigates away from the page
+            window.onbeforeunload = function() {
+                if (app) app.stop();
+            }
         }
-        $('.disabled').attr('disabled', true);
     }
 
     function _onSocketOpen(channel) {
