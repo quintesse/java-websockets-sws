@@ -1,0 +1,49 @@
+/* 
+    Document   : hound.css
+    Created on : Nov 27, 2010, 1:31:46 PM
+    Author     : Tako Schotanus <tako@codejive.org>
+    Description:
+        Purpose of the stylesheet follows.
+*/
+
+/* 
+   TODO customize this sample style
+   Syntax recommendation http://www.w3.org/TR/REC-CSS2/
+*/
+
+#main {
+    width: 100%;
+    height: 100%;
+}
+
+#container {
+    width: 100%;
+    height: 100%;
+    text-align: center;
+}
+
+#board { 
+    width: 800px;
+    height: 600px;
+    border: 3px solid blue;
+    padding: 1em;
+    border-radius: 8px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.hascanvas {
+    display: none;
+}
+
+.nocanvas {
+    display: none;
+}
+
+.formbox {
+    display: inline-block;
+}
+
+#startform {
+    display: block;
+}
