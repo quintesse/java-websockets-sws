@@ -16,7 +16,7 @@
         <dependency>
             <groupId>com.sun.grizzly</groupId>
             <artifactId>grizzly-websockets</artifactId>
-            <version>1.9.20</version>
+            <version>1.9.31</version>
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
