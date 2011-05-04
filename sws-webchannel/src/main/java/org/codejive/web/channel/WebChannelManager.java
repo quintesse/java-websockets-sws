@@ -128,7 +128,7 @@ public class WebChannelManager implements SwsEventListener {
                 // This is a bridged connection, so we forward the message to our peer
                 channel.onMessage(msg);
             }
-            channel.onOpen(from);
+            channel.onOpen(from, msg);
         } else if (CMD_OPEN_FAIL.equals(command)) {
             String reason = attribute(msg, "reason");
             log.info("Received 'open-fail' message for {} because '{}'", channel, reason);
@@ -171,7 +171,7 @@ public class WebChannelManager implements SwsEventListener {
                     JSONObject reply = new JSONObject();
                     reply.put(ATTR_CMD, CMD_OPEN_OK);
                     channel.send(reply);
-                    channel.onOpen(from);
+                    channel.onOpen(from, msg);
                 } catch (IOException ex) {
                     log.warn("Error sending open-ok message, failed to establish channel", ex);
                 }
@@ -287,10 +287,10 @@ public class WebChannelManager implements SwsEventListener {
         }
 
         @Override
-        public void onOpen(WebChannel channel) {
+        public void onOpen(WebChannel channel, JSONObject init) {
             if (skip.compareAndSet(false, true)) {
                 try {
-                    otherChannel(channel).onOpen(null);
+                    otherChannel(channel).onOpen(null, init);
                 } finally {
                     skip.set(false);
                 }

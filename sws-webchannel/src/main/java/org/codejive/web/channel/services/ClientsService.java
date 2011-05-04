@@ -81,7 +81,7 @@ public class ClientsService extends WebChannelAdapter implements Service, SwsMan
     }
 
     @Override
-    public void onOpen(WebChannel channel) {
+    public void onOpen(WebChannel channel, JSONObject init) {
         sendClientList(channel);
     }
 

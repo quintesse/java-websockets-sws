@@ -26,7 +26,7 @@ import org.json.simple.JSONObject;
 public abstract class WebChannelAdapter implements WebChannelListener {
 
     @Override
-    public void onOpen(WebChannel channel) {
+    public void onOpen(WebChannel channel, JSONObject init) {
     }
 
     @Override

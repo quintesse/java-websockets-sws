@@ -82,14 +82,14 @@ public class WebChannel {
         send(msg);
     }
     
-    protected void onOpen(String peerId) {
+    protected void onOpen(String peerId, JSONObject init) {
         if (peerId != null) {
             this.peerId = peerId;
         }
         log.info("Opened channel {}-{}", id, this.peerId);
         open = true;
         closed = false;
-        fireOnOpen();
+        fireOnOpen(init);
     }
 
     protected void onMessage(JSONObject msg) {
@@ -150,20 +150,20 @@ public class WebChannel {
         listeners.remove(listener);
     }
 
-    private void fireOnOpen() {
+    private void fireOnOpen(JSONObject init) {
         for (WebChannelListener l : listeners) {
             try {
-                l.onOpen(this);
+                l.onOpen(this, init);
             } catch (Throwable th) {
                 log.warn("Error occurred while firing event 'open' on a listener", th);
             }
         }
     }
 
-    private void fireOnMessage(JSONObject info) {
+    private void fireOnMessage(JSONObject msg) {
         for (WebChannelListener l : listeners) {
             try {
-                l.onMessage(this, info);
+                l.onMessage(this, msg);
             } catch (Throwable th) {
                 log.warn("Error occurred while firing event 'message' on a listener", th);
             }

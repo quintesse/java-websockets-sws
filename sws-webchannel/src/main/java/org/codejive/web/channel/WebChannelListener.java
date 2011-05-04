@@ -25,7 +25,7 @@ import org.json.simple.JSONObject;
  */
 public interface WebChannelListener {
 
-    public void onOpen(WebChannel channel);
+    public void onOpen(WebChannel channel, JSONObject init);
 
     public void onMessage(WebChannel channel, JSONObject msg);
 

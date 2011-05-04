@@ -63,7 +63,7 @@ public class ServicesService extends WebChannelAdapter implements Service {
     }
 
     @Override
-    public void onOpen(WebChannel channel) {
+    public void onOpen(WebChannel channel, JSONObject init) {
         JSONObject result = makeServicesList();
 
         try {

@@ -64,7 +64,7 @@ public class TimeService implements Service {
         private TimerTask task;
 
         @Override
-        public void onOpen(WebChannel channel) {
+        public void onOpen(WebChannel channel, JSONObject init) {
             this.channel = channel;
             timer = new Timer();
             task = new TimeServiceThread();
