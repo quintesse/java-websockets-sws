@@ -39,6 +39,7 @@ import org.codejive.web.sws.NetworkStableWebSocket;
 import org.codejive.web.sws.StableWebSocket;
 import org.codejive.web.sws.SwsManager;
 import org.codejive.web.sws.adapters.GFWebSocketAdapter;
+import org.codejive.web.swstestserver.hound.HoundService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -75,6 +76,7 @@ public class GlassfishSwsServlet extends HttpServlet {
         sm.register("time", new TimeService());
         sm.register("services", new ServicesService(sm));
         sm.register("clients", new ClientsService(swsManager, webChannelManager));
+        sm.register("hound", new HoundService());
     }
 
     @Override

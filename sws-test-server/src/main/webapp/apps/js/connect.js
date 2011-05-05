@@ -54,19 +54,23 @@ function App(config) {
     }
 
     _self.createService = function() {
-        $('#startform').hide('fast');
-        $('#waitform').fadeIn();
-        setWaitStatus('Waiting for other player to connect...');
-        var name = getPlayerName();
-        var id = config.name + '$' + _sws.id();
-        var title = config.title.replace("{name}", name);
-        _clientChannel.services().register(id, title, _serviceAccept);
+        if (config.accept) {
+            $('#startform').hide('fast');
+            $('#waitform').fadeIn();
+            setWaitStatus('Waiting for other player to connect...');
+            var name = getPlayerName();
+            var id = config.name + '$' + _sws.id();
+            var title = config.title.replace("{name}", name);
+            _clientChannel.services().register(id, title, _serviceAccept);
+        }
     }
     
     _self.cancelService = function() {
-        _clientChannel.services().unregister(config.name + '$' + _sws.id());
-        $('#waitform').fadeOut();
-        $('#startform').show('fast');
+        if (config.accept) {
+            _clientChannel.services().unregister(config.name + '$' + _sws.id());
+            $('#waitform').fadeOut();
+            $('#startform').show('fast');
+        }
     }
 
     _self.joinService = function() {
@@ -137,7 +141,8 @@ function App(config) {
     }
 
     function _openClientChannel() {
-        _clientChannel = new WebChannel(_sws, 'clients', 'sys');
+        var service = config.clientService || '//sys/clients';
+        _clientChannel = new WebChannel(_sws, service);
         _clientChannel.logging = true;
         _clientChannel.onmessage.bind(_onClientChannelMessage);
         _clientChannel.onclose.bind(_onClientChannelClose);
@@ -159,6 +164,12 @@ function App(config) {
                     }
                 }
             }
+        } else if (msg.games) {
+            for (var k = 0; k < msg.games.length; k++) {
+                var game = msg.games[k];
+                var gameUrl = config.gameService + '{"game":"' + game.name + '"}';
+                select.append($(document.createElement("option")).attr("value", gameUrl).text(sanitize(game.description)));
+            }
         }
         $('#joingamebutton').attr('disabled', true);
         if (select.children().size() > 0) {
@@ -171,9 +182,6 @@ function App(config) {
     }
 
     function _onClientChannelClose(channel) {
-        var select = $('#games');
-        select.hide('fast');
-        $('#joingamebutton').fadeOut();
         _clientChannel = undefined;
         if (!_sws.isclosed()) {
             // Retry connection to server in 5 seconds

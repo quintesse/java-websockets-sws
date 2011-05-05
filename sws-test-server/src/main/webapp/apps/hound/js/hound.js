@@ -41,13 +41,16 @@ var players = [
     {x: 100, y: 100, r: 0}
 ];
 
+var universe = {};
+
 $(document).ready(function() {
     var location = servletLocation('swsdemo');
     app = new App({
         name : 'hound',
         title : "{name}'s Hound game",
         url : location,
-        accept : onGameChannelAccept,
+        clientService : '//sys/hound{"list":1}',
+        gameService : '//sys/hound',
         onopen : onGameChannelsOpen,
         onmessage : onGameChannelsMessage,
         onclose : onGameChannelsClose
@@ -105,15 +108,7 @@ function initBoard() {
     }
 }
 
-var isMaster;
-function newGame() {
-    isMaster = true;
-    app.createService();
-    startGameLoop();
-}
-
 function joinGame() {
-    isMaster = false;
     app.joinService();
     startGameLoop();
 }
@@ -123,41 +118,48 @@ function onGameChannelAccept(service, channel, pkt) {
 }
 
 function onGameChannelsOpen(app, channel) {
-    if (isMaster) {
-        startMaster(channel);
-    } else {
-        startSlave(channel);
-    }
+    startSlave(channel);
 }
 
 var state;
 function onGameChannelsMessage(app, channel, msg) {
     var cmd = msg.cmd;
-    if (cmd == 'start' && !isMaster && state == 'connecting') {
-        peerName = sanitize(msg.name);
-        turn = msg.start;
-        updateGameStatus();
-        channel.send({
-            cmd: 'startok',
-            name: getPlayerName()
-        });
-        setupTurn();
-        state = 'playing';
-    } else if (cmd == 'startok' && isMaster && state == 'connecting') {
+    if (cmd == 'startok' && state == 'connecting') {
         peerName = sanitize(msg.name);
         updateGameStatus();
         setupTurn();
         state = 'playing';
-    } else if (cmd == 'move' && state == 'playing' && !isMyTurn() && cell(msg.x, msg.y).size() == 1) {
-        makeMove(msg.x, msg.y);
-    } else if (cmd == 'replay') {
-        if (gameOver()) {
-            setupReplay();
+    } else if (cmd == 'update') {
+        var updates = msg.universe;
+        for (var i = 0; i < updates.length; i++) {
+            var upd = updates[i];
+            var obj = universe[upd.id];
+            if (obj) {
+                updateObject(obj, upd);
+            } else {
+                createObject(upd);
+            }
         }
     } else {
-        if (console) console.log('Unknown or wrong message received',  msg);
+        if (console) console.log('Unknown or wrong message received', msg);
         channel.close();
     }
+}
+
+function createObject(upd) {
+    var obj = {};
+    for (var attr in upd) {
+        obj[attr] = upd[attr];
+    }
+    universe[upd.id] = obj;
+    if (console) console.log('CREATED', obj);
+}
+
+function updateObject(obj, upd) {
+    for (var attr in upd) {
+        obj[attr] = upd[attr];
+    }
+    if (console) console.log('UPDATED', upd);
 }
 
 function onGameChannelsClose(app, channel) {
@@ -218,6 +220,7 @@ function sendUpdates() {
 function draw() {
     clear();
     drawPlayer(players[0]);
+    drawUniverse();
 }
 
 function clear() {
@@ -233,5 +236,47 @@ function drawPlayer(ply) {
     ctx.lineTo(-3, 5);
     ctx.lineTo(3, 5);
     ctx.fill();
+    ctx.restore();
+}
+
+function drawUniverse() {
+    for (var idx in universe) {
+        var obj = universe[idx];
+        if (obj.type == 1) {
+            drawCircle(obj);
+        } else if (obj.type == 2) {
+            drawBox(obj);
+        } else if (obj.type == 3) {
+            drawTriangle(obj);
+        } else {
+            if (console) console.log('Unknown universe object type', obj.type);
+        }
+    }
+}
+
+function drawCircle(obj) {
+    ctx.save();
+    ctx.translate(obj.x / PREC, obj.y / PREC);
+    ctx.beginPath();
+    ctx.arc(0, 0, 10, 0, 2 * Math.PI);
+    ctx.stroke();
+    ctx.restore();
+}
+
+function drawBox(obj) {
+    ctx.save();
+    ctx.translate(obj.x / PREC, obj.y / PREC);
+    ctx.beginPath();
+    ctx.arc(0, 0, 10, 0, 2 * Math.PI);
+    ctx.stroke();
+    ctx.restore();
+}
+
+function drawTriangle(obj) {
+    ctx.save();
+    ctx.translate(obj.x / PREC, obj.y / PREC);
+    ctx.beginPath();
+    ctx.arc(0, 0, 10, 0, 2 * Math.PI);
+    ctx.stroke();
     ctx.restore();
 }
