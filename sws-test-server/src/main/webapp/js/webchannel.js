@@ -154,6 +154,14 @@ function WebChannel(socket, service, arg1, arg2) {
             $cmd : 'open',
             service : _service
         };
+        
+        // Add additional attributes (if any)
+        if (_serviceAttr) {
+            for (attr in _serviceAttr) {
+                pkt[attr] = _serviceAttr[attr];
+            }
+        }
+        
         _send(pkt);
     }
 
@@ -202,6 +210,7 @@ function WebChannel(socket, service, arg1, arg2) {
     var _socket = socket;
     var _service = service;
     var _peerSocketId = "sys";
+    var _serviceAttr = undefined;
 
     _self.logging = false;
     _self.onopen = new EventDispatcher();
@@ -210,7 +219,7 @@ function WebChannel(socket, service, arg1, arg2) {
     _self.onreconnect = new EventDispatcher();
     _self.onmessage = new EventDispatcher();
 
-    if (arg2) {
+    if (arg2 && typeof(arg2) != 'object') {
         // Connection already established
         _peerId = arg1;
         _id = arg2;
@@ -218,11 +227,21 @@ function WebChannel(socket, service, arg1, arg2) {
         // Next step: establish connection
         if (arg1) {
             _peerSocketId = arg1;
+            _serviceAttr = arg2;
         } else if (_service.substr(0, 2) == '//') {
             // service name really is a //peer/service url
             var tmp = service.split("/", 4);
             _peerSocketId = tmp[2];
             _service = tmp[3];
+            // extract attributes (if any)
+            // of the form //peer/service{"x":1,"y":2,"etc":true}
+            // which will be passed to the service provider
+            var p = _service.indexOf('{');
+            if (p >= 0) {
+                var attr = _service.substr(p);
+                _service = _service.substring(0, p);
+                _serviceAttr = JSON.parse(attr);
+            }
         }
         setTimeout(_init, 0);
     }
