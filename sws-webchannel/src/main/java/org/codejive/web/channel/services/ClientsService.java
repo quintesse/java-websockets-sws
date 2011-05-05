@@ -86,6 +86,11 @@ public class ClientsService extends WebChannelAdapter implements Service, SwsMan
     }
 
     @Override
+    public void onReconnect(WebChannel channel) {
+        sendClientList(channel);
+    }
+
+    @Override
     public void onClose(WebChannel channel) {
         acceptedServices.remove(channel.getUniqueId());
     }
