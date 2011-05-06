@@ -61,6 +61,15 @@ public class StaticItem implements DObject, Serializable {
     }
 
     @Override
+    public boolean isEqual(DObject object) {
+        if (object != null && object.getClass() == getClass()) {
+            StaticItem item = (StaticItem)object;
+            return (type == item.type) && (x == item.x) && (y == item.y);
+        }
+        return false;
+    }
+
+    @Override
     public void copy(DObject object) {
         StaticItem item = (StaticItem)object;
         type = item.type;
@@ -72,20 +81,20 @@ public class StaticItem implements DObject, Serializable {
     public JSONObject toJson(DObject oldObject) {
         JSONObject json = null;
 
-        StaticItem item = (StaticItem)oldObject;
-        if (oldObject == null || type != item.type) {
-            json = (json == null) ? new JSONObject() : json;
-            json.put("type", type);
+        if (!isEqual(oldObject)) {
+            json = new JSONObject();
+            StaticItem item = (StaticItem)oldObject;
+            if (item == null || type != item.type) {
+                json.put("type", type);
+            }
+            if (item == null || x != item.x) {
+                json.put("x", x);
+            }
+            if (item == null || y != item.y) {
+                json.put("y", y);
+            }
         }
-        if (oldObject == null || x != item.x) {
-            json = (json == null) ? new JSONObject() : json;
-            json.put("x", x);
-        }
-        if (oldObject == null || y != item.y) {
-            json = (json == null) ? new JSONObject() : json;
-            json.put("y", y);
-        }
-        
+
         return json;
     }
 

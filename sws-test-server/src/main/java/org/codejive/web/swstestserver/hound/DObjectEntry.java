@@ -39,6 +39,10 @@ public class DObjectEntry<T extends DObject> {
         return object;
     }
 
+    boolean isDirty() {
+        return backup == null || !backup.isEqual(object);
+    }
+
     void sync() {
         if (backup == null) {
             this.backup = create(object);

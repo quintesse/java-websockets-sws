@@ -22,6 +22,7 @@ import org.json.simple.JSONObject;
  * @author tako@codejive.org
  */
 public interface DObject {
+    boolean isEqual(DObject object);
     void copy(DObject object);
     JSONObject toJson(DObject oldObject);
 }

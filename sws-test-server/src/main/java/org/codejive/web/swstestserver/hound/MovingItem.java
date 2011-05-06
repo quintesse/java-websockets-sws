@@ -51,6 +51,15 @@ public class MovingItem extends StaticItem {
     }
 
     @Override
+    public boolean isEqual(DObject object) {
+        if (super.isEqual(object)) {
+            MovingItem item = (MovingItem)object;
+            return (vx == item.vx) && (vy == item.vy);
+        }
+        return false;
+    }
+
+    @Override
     public void copy(DObject object) {
         super.copy(object);
         MovingItem item = (MovingItem)object;
@@ -61,17 +70,15 @@ public class MovingItem extends StaticItem {
     @Override
     public JSONObject toJson(DObject oldObject) {
         JSONObject json = super.toJson(oldObject);
-
-        MovingItem item = (MovingItem)oldObject;
-        if (oldObject == null || vx != item.vx) {
-            json = (json == null) ? new JSONObject() : json;
-            json.put("vx", vx);
+        if (json != null) {
+            MovingItem item = (MovingItem)oldObject;
+            if (item == null || vx != item.vx) {
+                json.put("vx", vx);
+            }
+            if (item == null || vy != item.vy) {
+                json.put("vy", vy);
+            }
         }
-        if (oldObject == null || vy != item.vy) {
-            json = (json == null) ? new JSONObject() : json;
-            json.put("vy", vy);
-        }
-        
         return json;
     }
 

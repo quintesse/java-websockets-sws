@@ -31,6 +31,7 @@ import org.json.simple.JSONObject;
 public class DObjectHandler {
     private Map<Integer, DObjectEntry> entries;
     private Set<DObjectEntry> modified;
+    private Set<DObjectEntry> removed;
     private int nextId;
 
     public DObjectHandler() {
@@ -40,6 +41,7 @@ public class DObjectHandler {
     private void init() {
         entries = new HashMap<Integer, DObjectEntry>();
         modified = new HashSet<DObjectEntry>();
+        removed = new HashSet<DObjectEntry>();
         nextId = 1;
     }
 
@@ -56,7 +58,9 @@ public class DObjectHandler {
     public void removeObject(DObjectEntry entry) {
         assert(entry != null);
 
-        entries.remove(entry.getId());
+        if (entries.remove(entry.getId()) != null) {
+            removed.add(entry);
+        }
     }
 
     public void clear() {
@@ -73,11 +77,7 @@ public class DObjectHandler {
         modified.add(entry);
     }
     
-    public Collection<DObjectEntry> listModified() {
-        return Collections.unmodifiableSet(modified);
-    }
-
-    public void clearModified() {
+    public void reset() {
         // Sync the changes made in the modified object
         // with the set of cloned objects
         for (DObjectEntry entry : modified) {
@@ -86,13 +86,29 @@ public class DObjectHandler {
         // Now that the two sets are in sync we clear
         // the list of changes
         modified.clear();
+        removed.clear();
     }
 
     public JSONArray toJson(boolean full) {
         JSONArray result = new JSONArray();
-        for (DObjectEntry entry : entries.values()) {
-            JSONObject obj = entry.toJson(full);
-            if (obj != null) {
+        if (full) {
+            for (DObjectEntry entry : entries.values()) {
+                JSONObject obj = entry.toJson(true);
+                if (obj != null) {
+                    result.add(obj);
+                }
+            }
+        } else {
+            for (DObjectEntry entry : modified) {
+                JSONObject obj = entry.toJson(false);
+                if (obj != null) {
+                    result.add(obj);
+                }
+            }
+            for (DObjectEntry entry : removed) {
+                JSONObject obj = new JSONObject();
+                obj.put("id", entry.getId());
+                obj.put("$cmd", "remove");
                 result.add(obj);
             }
         }
