@@ -43,6 +43,8 @@ public class HoundService implements Service {
     private DObjectHandler universe;
 
     private DObjectEntry<MovingItem> movingEntry;
+    private DObjectEntry<StaticItem> staticEntry1;
+    private DObjectEntry<StaticItem> staticEntry2;
 
     private static final Logger log = LoggerFactory.getLogger(HoundService.class);
 
@@ -57,9 +59,9 @@ public class HoundService implements Service {
         gameClients = new ConcurrentHashMap<String, HoundGameServiceHandler>();
 
         universe = new DObjectHandler();
-        movingEntry = universe.addObject(new MovingItem(1, 50, 200, 10, 0));
-        universe.addObject(new StaticItem(2, 100, 100));
-        universe.addObject(new StaticItem(3, 150, 150));
+        movingEntry = universe.addObject(new MovingItem(1, 50, 200, 100, 0));
+        staticEntry1 = universe.addObject(new StaticItem(2, 100, 100));
+        staticEntry2 = universe.addObject(new StaticItem(3, 150, 150));
     }
 
     @Override
@@ -199,21 +201,36 @@ public class HoundService implements Service {
     }
 
     private class GameUpdateThread extends TimerTask {
+        private long gameTime;
+
         @Override
         public void run() {
             // Simulate the universe
-            MovingItem item = movingEntry.getObject();
-            double newX = item.getX() + item.getVx();
-            if (newX < 50) {
-                newX = 50;
-                item.setVx(10);
+            long now = System.nanoTime();
+            if (gameTime != 0) {
+                double dt = ((double)(now - gameTime)) / 1000000000;
+                MovingItem item = movingEntry.getObject();
+                double newX = item.getX() + item.getVx() * dt;
+                if (newX < 50) {
+                    newX = 50;
+                    // Flip direction
+                    item.setVx(Math.abs(item.getVx()));
+                    // Just to do something...
+                    universe.removeObject(staticEntry1);
+                }
+                if (newX > 2000) {
+                    newX = 2000;
+                    // Flip direction
+                    item.setVx(-Math.abs(item.getVx()));
+                    // Just to do something...
+                    universe.removeObject(staticEntry2);
+                }
+                item.setX(newX);
+                if (movingEntry.isDirty()) {
+                    universe.markModified(movingEntry);
+                }
             }
-            if (newX > 2000) {
-                newX = 2000;
-                item.setVx(-10);
-            }
-            item.setX(newX);
-            universe.markModified(movingEntry);
+            gameTime = now;
 
             // Send updates to clients
             JSONObject fullMsg = null;
@@ -225,7 +242,7 @@ public class HoundService implements Service {
                     if (fullMsg == null) {
                         fullMsg = new JSONObject();
                         fullMsg.put("universe", universe.toJson(true));
-                        fullMsg.put("cmd", "update");
+                        fullMsg.put("cmd", "create");
                     }
                     msg = fullMsg;
                 } else {
@@ -242,7 +259,7 @@ public class HoundService implements Service {
                     log.error("Couldn't send update message to peer", ex);
                 }
             }
-            universe.clearModified();
+            universe.reset();
         }
     }
 }

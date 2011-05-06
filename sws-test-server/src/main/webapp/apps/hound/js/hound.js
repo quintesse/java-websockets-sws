@@ -42,6 +42,7 @@ var players = [
 ];
 
 var universe = {};
+var gameTime = 0;
 
 $(document).ready(function() {
     var location = servletLocation('swsdemo');
@@ -129,21 +130,34 @@ function onGameChannelsMessage(app, channel, msg) {
         updateGameStatus();
         setupTurn();
         state = 'playing';
+    } else if (cmd == 'create') {
+        universe = {};
+        var updates = msg.universe;
+        updateUniverse(updates);
     } else if (cmd == 'update') {
         var updates = msg.universe;
-        for (var i = 0; i < updates.length; i++) {
-            var upd = updates[i];
+        updateUniverse(updates);
+    } else {
+        if (console) console.log('Unknown or wrong message received', msg);
+        channel.close();
+    }
+}
+
+function updateUniverse(updates) {
+    for (var i = 0; i < updates.length; i++) {
+        var upd = updates[i];
+        if (upd['$cmd'] != 'remove') {
             var obj = universe[upd.id];
             if (obj) {
                 updateObject(obj, upd);
             } else {
                 createObject(upd);
             }
+        } else {
+            removeObject(upd.id);
         }
-    } else {
-        if (console) console.log('Unknown or wrong message received', msg);
-        channel.close();
     }
+    gameTime = (new Date()).getTime();
 }
 
 function createObject(upd) {
@@ -160,6 +174,11 @@ function updateObject(obj, upd) {
         obj[attr] = upd[attr];
     }
     if (console) console.log('UPDATED', upd);
+}
+
+function removeObject(id) {
+    delete universe[id];
+    if (console) console.log('REMOVED', id);
 }
 
 function onGameChannelsClose(app, channel) {
@@ -185,16 +204,19 @@ function stopGameLoop() {
 }
 
 function doTick() {
-    var dt = SECOND / TICKS_PER_SECOND; // realmente deberíamos usar el reloj!
+    var now = (new Date()).getTime();
+    var dt = (now - gameTime) / 1000;
     handleInput(dt);
     sendUpdates();
+    simulateUniverse(dt);
     draw();
+    gameTime = now;
 }
 
 function handleInput(dt) {
     var ply = players[0];
     
-    var turned = Math.round(TURN_RATE * dt / SECOND);
+    var turned = Math.round(TURN_RATE * dt);
     if (turnLeft) {
         ply.r = (ply.r + (UNIT - turned)) % UNIT;
     } else if (turnRight) {
@@ -202,7 +224,7 @@ function handleInput(dt) {
     }    
     var rad = 2 * Math.PI * ply.r / UNIT;
     
-    var dist = Math.round(MOVE_SPEED * dt / SECOND);
+    var dist = Math.round(MOVE_SPEED * dt);
     var dx = dist * Math.sin(rad);
     var dy = dist * -Math.cos(rad);
     if (forward) {
@@ -215,6 +237,18 @@ function handleInput(dt) {
 }
 
 function sendUpdates() {    
+}
+
+function simulateUniverse(dt) {
+    for (var idx in universe) {
+        var obj = universe[idx];
+        if (obj.vx) {
+            obj.x += obj.vx * dt;
+        }
+        if (obj.vy) {
+            obj.y += obj.vy * dt;
+        }
+    }
 }
 
 function draw() {
