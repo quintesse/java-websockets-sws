@@ -277,7 +277,7 @@ function setWaitStatus(msg, error) {
 
 function servletLocation(servletName) {
     var path = document.location.pathname;
-    var p = path.lastIndexOf('/');
+    var p = path.indexOf('/apps/');
     path = path.substring(0, p + 1);
     var location = 'ws://' + document.location.host + path + servletName;
     return location;
