@@ -9,20 +9,9 @@
     <groupId>org.codejive.web.sws</groupId>
     <artifactId>sws-test-server</artifactId>
     <packaging>war</packaging>
-    <version>1.0-SNAPSHOT</version>
-    <name>sws-test-server Java EE 6 Webapp</name>
+    <name>sws-test-server Java EE 7 Webapp</name>
     <url>http://maven.apache.org</url>
     <dependencies>
-        <!--dependency>
-            <groupId>org.mortbay.jetty</groupId>
-            <artifactId>jetty-maven-plugin</artifactId>
-            <version>7.1.4.v20100610</version>
-        </dependency>
-        <dependency>
-            <groupId>org.eclipse.jetty</groupId>
-            <artifactId>jetty-websocket</artifactId>
-            <version>7.1.4.v20100610</version>
-        </dependency-->
         <dependency>
             <groupId>com.googlecode.json-simple</groupId>
             <artifactId>json-simple</artifactId>
@@ -30,8 +19,8 @@
         </dependency>
         <dependency>
             <groupId>javax</groupId>
-            <artifactId>javaee-web-api</artifactId>
-            <version>6.0</version>
+            <artifactId>javaee-api</artifactId>
+            <version>7.0</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
@@ -46,12 +35,7 @@
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
-            <artifactId>sws-jetty</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>${project.groupId}</groupId>
-            <artifactId>sws-glassfish</artifactId>
+            <artifactId>sws-jee</artifactId>
             <version>${project.version}</version>
         </dependency>
     </dependencies>
@@ -64,24 +48,6 @@
                 <configuration>
                     <failOnMissingWebXml>false</failOnMissingWebXml>
                 </configuration>
-            </plugin>
-            <plugin>
-                <groupId> org.mortbay.jetty</groupId >
-                <artifactId >jetty-maven-plugin</artifactId >
-                <version >7.1.4.v20100610</version >
-                <configuration >
-                    <scanIntervalSeconds >5</scanIntervalSeconds >
-                    <stopPort>8441</stopPort>
-                    <stopKey>STOPME!</stopKey>
-                </configuration >
-                <dependencies >
-                    <dependency >
-                        <groupId >org.eclipse.jetty</groupId >
-                        <artifactId >jetty-websocket</artifactId >
-                        <version >7.1.4.v20100610</version >
-                        <type >jar</type >
-                    </dependency >
-                </dependencies >
             </plugin>
         </plugins>
         <finalName>sws-test-server</finalName>

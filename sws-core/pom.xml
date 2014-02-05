@@ -10,7 +10,6 @@
     <groupId>org.codejive.web.sws</groupId>
     <artifactId>sws-core</artifactId>
     <packaging>jar</packaging>
-    <version>1.0-SNAPSHOT</version>
     <name>sws-core</name>
     <dependencies>
         <dependency>

@@ -9,11 +9,10 @@
     <url>http://www.codejive.org/sws</url>
     <modules>
         <module>sws-core</module>
-        <module>sws-jetty</module>
-        <module>sws-glassfish</module>
+        <module>sws-jee</module>
         <module>sws-test-server</module>
-    <module>sws-webchannel</module>
-  </modules>
+        <module>sws-webchannel</module>
+    </modules>
     <licenses>
         <license>
             <name>Apache 2</name>
@@ -48,8 +47,8 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>2.3.2</version>
                 <configuration>
-                    <source>1.6</source>
-                    <target>1.6</target>
+                    <source>1.7</source>
+                    <target>1.7</target>
                 </configuration>
             </plugin>
         </plugins>
